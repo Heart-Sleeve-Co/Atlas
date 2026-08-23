@@ -31,7 +31,7 @@ export default function App() {
       <header className="app-header">
         <div className="brand" data-testid="brand-header">
           <h1>Atlas</h1>
-          <p>a navigator for feelings</p>
+          <p>an emotion map</p>
         </div>
         <ThemeToggle theme={theme} onChange={setTheme} />
       </header>

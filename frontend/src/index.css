@@ -408,9 +408,11 @@ body[data-theme="cosmic"] .bubble-aura {
 
 .brand h1 {
   font-family: var(--font-heading);
-  font-weight: 500;
-  font-size: 1.4rem;
-  letter-spacing: -0.01em;
+  font-weight: 600;
+  font-size: 2.2rem;
+  line-height: 1;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
   margin: 0;
 }
 .brand p {

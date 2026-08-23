@@ -81,12 +81,14 @@ async def root():
 async def get_all_emotions():
     """Return all curated emotions + any cached generated emotions."""
     emotions = []
+    covered = set()
     # curated (only keep entries within current grid bounds)
     for key, data in CURATED_EMOTIONS.items():
         x_str, y_str = key.split(",")
         x, y = int(x_str), int(y_str)
         if not (X_MIN <= x <= X_MAX and Y_MIN <= y <= Y_MAX):
             continue
+        covered.add((x, y))
         emotions.append({
             "x": x,
             "y": y,
@@ -94,9 +96,11 @@ async def get_all_emotions():
             "description": data["description"],
             "source": "curated",
         })
-    # cached generated
+    # cached generated — only include coords NOT already covered by curated
     cached = await db.generated_emotions.find({}, {"_id": 0}).to_list(2000)
     for c in cached:
+        if (c["x"], c["y"]) in covered:
+            continue
         emotions.append({
             "x": c["x"],
             "y": c["y"],

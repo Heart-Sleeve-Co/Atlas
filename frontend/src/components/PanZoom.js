@@ -127,18 +127,7 @@ export default function PanZoom({ children, initialFit = true }) {
     if (!vp) return;
     const pointers = new Map();
 
-    const isDraggableTarget = (target) => {
-      // Don't start a pan gesture from an interactive element inside the surface
-      // (e.g. bubble hover/click should still work).
-      // Instead: allow pan only when the pointer is on empty surface OR
-      // when the user holds Space / middle-click. To keep it feeling map-like,
-      // we allow pan from any target except direct interactive bubbles/panels
-      // on the FIRST movement threshold — clicks under threshold still fire.
-      return true;
-    };
-
     const onPointerDown = (e) => {
-      if (!isDraggableTarget(e.target)) return;
       // Middle mouse or left mouse only
       if (e.button != null && e.button !== 0 && e.button !== 1) return;
       // Skip if the target is an interactive control we shouldn't hijack

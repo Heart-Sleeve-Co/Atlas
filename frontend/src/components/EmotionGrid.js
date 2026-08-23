@@ -57,11 +57,9 @@ function coordKey(x, y) {
 }
 
 export default function EmotionGrid({ selected, setSelected, loadingSelected, setLoadingSelected }) {
-  const containerRef = useRef(null);
   const nodesRef = useRef([]);
   const domRefs = useRef(new Map());
   const simulationRef = useRef(null);
-  const [size, setSize] = useState({ w: 0, h: 0 });
   const [emotionMap, setEmotionMap] = useState(new Map());
 
   // Precompute 169 nodes
@@ -105,18 +103,6 @@ export default function EmotionGrid({ selected, setSelected, loadingSelected, se
     return () => {
       cancelled = true;
     };
-  }, []);
-
-  // Measure viewport (container is inside a scrollable wrapper)
-  useEffect(() => {
-    const measure = () => {
-      const w = window.innerWidth;
-      const h = window.innerHeight;
-      setSize({ w, h });
-    };
-    measure();
-    window.addEventListener("resize", measure);
-    return () => window.removeEventListener("resize", measure);
   }, []);
 
   // Compute grid dimensions — fixed logical spacing; PanZoom handles fit-to-view.
@@ -370,7 +356,6 @@ export default function EmotionGrid({ selected, setSelected, loadingSelected, se
 
   return (
     <div
-      ref={containerRef}
       style={{
         position: "relative",
         width: gridDims.totalW,

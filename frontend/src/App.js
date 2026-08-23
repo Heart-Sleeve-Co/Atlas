@@ -4,7 +4,7 @@ import EmotionGrid from "@/components/EmotionGrid";
 import EmotionDetailPanel from "@/components/EmotionDetailPanel";
 import ThemeToggle from "@/components/ThemeToggle";
 import PanZoom from "@/components/PanZoom";
-import { ChevronDown, HelpCircle } from "lucide-react";
+import { HelpCircle } from "lucide-react";
 
 const THEME_KEY = "emotions-theme";
 
@@ -67,17 +67,10 @@ export default function App() {
           onClick={() => setLegendOpen((v) => !v)}
           aria-expanded={legendOpen}
           aria-controls="legend-body"
+          aria-label={legendOpen ? "Hide help" : "Show help"}
           data-testid="legend-toggle"
         >
-          <span className="legend-title">
-            <HelpCircle size={13} strokeWidth={1.7} />
-            How to read this
-          </span>
-          <ChevronDown
-            className={`legend-chevron${legendOpen ? " open" : ""}`}
-            size={14}
-            strokeWidth={1.8}
-          />
+          <HelpCircle size={14} strokeWidth={1.8} />
         </button>
         <div
           id="legend-body"

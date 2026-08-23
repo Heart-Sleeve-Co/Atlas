@@ -48,9 +48,6 @@ export function emotionColor(x, y) {
 
   return {
     color: `hsl(${hue}, ${saturation}%, ${lightness}%)`,
-    highlight: `hsl(${hue}, ${Math.min(100, saturation + 10)}%, ${Math.min(90, lightness + 20)}%)`,
-    shade: `hsl(${hue}, ${saturation}%, ${Math.max(30, lightness - 22)}%)`,
     glow: `hsla(${hue}, ${saturation}%, ${lightness}%, 0.55)`,
-    hue,
   };
 }

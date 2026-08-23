@@ -1,0 +1,42 @@
+{
+  "summary": "Tested backend (9 pytest cases, 100% pass) and frontend (7 requested items) for The Feeling Field emotions chart. Verified: 169 bubbles render, detail panel shows only name+description (no coord/source), theme toggle labels 'Light Mode'/'Dark Mode', collapsible legend, corner-bubble physics + clickability, full pan/zoom (wheel, buttons, drag, reset). ONE requested fix FAILED: BUG FIX 2 — a pushed neighbour bubble does NOT smoothly return to rest; it stays displaced ~8px for ~3 seconds then snaps back instantly in a single frame (the exact 'clicking back' the user reported).",
+  "backend_issues": { "critical": [], "minor": [] },
+  "frontend_issues": {
+    "ui_bugs": [
+      {
+        "component": "EmotionGrid (d3-force return-to-rest)",
+        "issue": "BUG FIX 2 NOT FIXED. Measured neighbour emotion-bubble-1-0 while hovering emotion-bubble-0-0: rest x=996.07 -> pushed x=1004.87. After mouse-away, sampled every 100ms for 4s: the bubble drifts only 0.64px total over ~3s (1004.87 -> 1004.23), then at t=3000ms it JUMPS -8.16px to 996.07 in one frame. So (c) != (a) at the required 2s mark (delta 8.3px, spec allows +/-3px) and the return is an instant snap, not a smooth interpolation. Reproduced on 3 separate runs and on a second pair (bubble--3-0 / bubble--2-0, same 8.4px linger + snap).",
+        "selector": "[data-testid=\"emotion-bubble-1-0\"]",
+        "priority": "HIGH"
+      }
+    ],
+    "integration_issues": [],
+    "design_issues": [
+      {
+        "screen": "Legend (bottom-right)",
+        "issues": ["Collapse animation is sluggish: after the 2nd click aria-hidden flips immediately but computed max-height is still 240px at +200ms and only reaches 44px well after the declared 300ms transition (measured collapsed at ~1.4s). Functionally correct, just visually laggy."]
+      }
+    ]
+  },
+  "test_report_links": [
+    "/app/backend/tests/backend_test.py",
+    "/app/test_reports/pytest/pytest_results.xml"
+  ],
+  "action_items": [
+    "Fix the return-to-rest physics in /app/frontend/src/components/EmotionGrid.js. Root cause: after SHRINK_MS the sim restarts with alpha(0.18) + velocityDecay(0.85) while forceX/forceY strength is only 0.35 -> per-tick pull is ~8px*0.35*0.18*0.15 = 0.07px, so the node barely moves before alphaMin(0.02) is reached; the .on('end') handler then hard-assigns n.x = n.tx / n.y = n.ty, producing the visible one-frame 8px snap. Either (a) restart the return with a real budget (e.g. alpha(1), alphaDecay(0.03-0.05), velocityDecay(0.4-0.5)) so forceX/forceY actually carries nodes home, or (b) drop the hard n.x=n.tx assignment in on('end') and animate the residual offset (rAF lerp / CSS transition on translate) so it eases to rest.",
+    "Optionally shorten the perceived legend collapse lag (max-height transition kicks in late)."
+  ],
+  "critical_code_review_comments": [
+    "EmotionGrid.js: `const SHRINK_MS = 420;` is declared at line 246, AFTER handleLeave (line 243) which references it. It only works because the closure runs post-render — move the constant to module scope to avoid a future TDZ crash.",
+    "EmotionGrid.js: the `.on('end')` handler hard-sets node positions, which is inherently a teleport; any residual offset will always be visible as a snap. This is the mechanism behind the reported bug.",
+    "PanZoom.js: `isDraggableTarget()` unconditionally returns true — dead code with a misleading 10-line comment; remove or implement.",
+    "SHRINK_MS/shrinkTimer restart logic is duplicated in handleLeave and the `selected` effect (~15 identical lines) — extract a `scheduleShrink(node)` helper (DRY)."
+  ],
+  "updated_files": ["/app/backend/tests/backend_test.py"],
+  "success_rate": { "backend": "100% (9/9)", "frontend": "86% (6/7 requested items; BUG FIX 2 failed)" },
+  "seed_data_creation": "POST /api/emotions/generate cached LLM entries for (5,-1) and (4,-2) in db.generated_emotions; clicking bubbles (3,3) and (6,6) used curated data only.",
+  "should_call_test_agent_after_fix": true,
+  "should_main_agent_self_test": false,
+  "context_for_next_testing_agent": "Backend suite at /app/backend/tests/backend_test.py covers /api/, /api/emotions (bounds -6..6, <=169 unique cells, no _id leak), /api/emotions/generate (curated (-6,6)=Outraged, LLM (5,-1) & (4,-2) with cache re-check, 400 out-of-bounds, 422 invalid). All pass in ~1s. Frontend verified: 169 bubbles, detail panel has NO detail-coord/detail-source testids and clean text, theme labels Light/Dark Mode + data-theme switching, legend collapsed on load (aria-hidden=true, panel h=44) -> expands (h=138) -> collapses again, corner bubble 6-6 pushes 5-6 and 6-5 and opens 'Exhilarated', wheel zoom 97%->178%, zoom-in/out, drag pan (does not fire a bubble click), zoom-reset back to 97%. Only regression to retest: neighbour return-to-rest. Repro: mouse to (20,980), read bounding box of emotion-bubble-1-0, hover emotion-bubble-0-0 (force=True) 900ms, move mouse away, then sample the box every 100ms for 4s — currently shows <1px drift then a -8.16px single-frame jump at ~3s.",
+  "rca_of_the_issue": "Return-phase d3-force parameters are too weak to move nodes: forceX/forceY strength 0.35 combined with alpha(0.18), alphaDecay(0.12) and velocityDecay(0.85) yields ~0.07px displacement per tick, so the ~8px overlap offset is essentially untouched during the ~30-tick run; the simulation's 'end' callback then assigns n.x = n.tx directly, teleporting the bubble home in a single frame ~3s after mouse-out. Delaying node.radius by SHRINK_MS only postpones the snap, it does not create a smooth return."
+}

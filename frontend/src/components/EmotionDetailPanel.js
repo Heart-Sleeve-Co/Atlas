@@ -25,9 +25,6 @@ export default function EmotionDetailPanel({ emotion, loading, onClose }) {
 
           {loading && !emotion ? (
             <div>
-              <p className="detail-coord" data-testid="detail-coord">
-                Reading the field…
-              </p>
               <h2 className="detail-name" style={{ opacity: 0.4 }}>
                 <span className="spinner" style={{ marginRight: 10 }} />
                 Naming this feeling
@@ -39,30 +36,11 @@ export default function EmotionDetailPanel({ emotion, loading, onClose }) {
             </div>
           ) : (
             <div>
-              <p className="detail-coord" data-testid="detail-coord">
-                x {emotion.x >= 0 ? "+" : ""}
-                {emotion.x} &nbsp;·&nbsp; y {emotion.y >= 0 ? "+" : ""}
-                {emotion.y}
-              </p>
               <h2 className="detail-name" data-testid="detail-name">
                 {emotion.name}
               </h2>
               <p className="detail-desc" data-testid="detail-description">
                 {emotion.description}
-              </p>
-              <p className="detail-source" data-testid="detail-source">
-                <span
-                  style={{
-                    display: "inline-block",
-                    width: 6,
-                    height: 6,
-                    borderRadius: 999,
-                    background: "currentColor",
-                  }}
-                />
-                {emotion.source === "curated"
-                  ? "curated definition"
-                  : "generated on the fly"}
               </p>
             </div>
           )}

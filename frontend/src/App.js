@@ -3,6 +3,7 @@ import "@/App.css";
 import EmotionGrid from "@/components/EmotionGrid";
 import ThemeToggle from "@/components/ThemeToggle";
 import PanZoom from "@/components/PanZoom";
+import { ChevronDown, HelpCircle } from "lucide-react";
 
 const THEME_KEY = "emotions-theme";
 
@@ -11,6 +12,7 @@ export default function App() {
     if (typeof window === "undefined") return "cosmic";
     return localStorage.getItem(THEME_KEY) || "cosmic";
   });
+  const [legendOpen, setLegendOpen] = useState(false);
 
   useEffect(() => {
     document.body.setAttribute("data-theme", theme);
@@ -35,10 +37,41 @@ export default function App() {
         <EmotionGrid theme={theme} />
       </PanZoom>
 
-      <aside className="glass-panel legend" data-testid="legend">
-        <strong>How to read this</strong>
-        Horizontal — unpleasant ↔ pleasant. Vertical — low energy ↔ high energy.
-        Hover to nudge; click for meaning.
+      <aside
+        className={`glass-panel legend${legendOpen ? " is-open" : " is-closed"}`}
+        data-testid="legend"
+      >
+        <button
+          type="button"
+          className="legend-header"
+          onClick={() => setLegendOpen((v) => !v)}
+          aria-expanded={legendOpen}
+          aria-controls="legend-body"
+          data-testid="legend-toggle"
+        >
+          <span className="legend-title">
+            <HelpCircle size={13} strokeWidth={1.7} />
+            How to read this
+          </span>
+          <ChevronDown
+            className={`legend-chevron${legendOpen ? " open" : ""}`}
+            size={14}
+            strokeWidth={1.8}
+          />
+        </button>
+        <div
+          id="legend-body"
+          className="legend-body"
+          data-testid="legend-body"
+          aria-hidden={!legendOpen}
+        >
+          <p>
+            <strong>Horizontal</strong> — unpleasant ↔ pleasant.
+            <br />
+            <strong>Vertical</strong> — low energy ↔ high energy.
+          </p>
+          <p>Click any bubble to see the meaning of that emotion.</p>
+        </div>
       </aside>
     </div>
   );

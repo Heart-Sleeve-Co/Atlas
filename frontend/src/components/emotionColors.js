@@ -28,8 +28,8 @@ function lerpHue(h1, h2, t) {
 
 export function emotionColor(x, y) {
   // Normalize x, y to 0..1
-  const nx = (x + 8) / 15; // 0 at x=-8, 1 at x=+7
-  const ny = (y + 8) / 15;
+  const nx = (x + 6) / 12; // 0 at x=-6, 1 at x=+6
+  const ny = (y + 6) / 12;
 
   // Blend hue: horizontally between (Q3<->Q4) at bottom, (Q2<->Q1) at top,
   // then vertically between the two horizontal blends.

@@ -28,9 +28,13 @@ const PADDING_RIGHT = 220; // room for right axis label
 
 // Bubble sizing — bubbles 50% larger than baseline, with tighter spacing
 const BASE_RADIUS = 27;
-const HOVER_SCALE = 1.5;
+// Scale factor applied to a bubble when it is selected (clicked).
+const SELECTED_SCALE = 1.5;
 // Minimum spacing between adjacent bubble centers — tight (marble-like).
 const MIN_STEP = 64;
+
+// How long the CSS scale transition on .bubble-scale lasts — must match CSS.
+const SHRINK_MS = 420;
 
 function coordKey(x, y) {
   return `${x},${y}`;
@@ -43,7 +47,6 @@ export default function EmotionGrid() {
   const simulationRef = useRef(null);
   const [size, setSize] = useState({ w: 0, h: 0 });
   const [emotionMap, setEmotionMap] = useState(new Map());
-  const [hoveredKey, setHoveredKey] = useState(null);
   const [selected, setSelected] = useState(null);
   const [loadingSelected, setLoadingSelected] = useState(false);
 
@@ -150,19 +153,19 @@ export default function EmotionGrid() {
       }
     }
 
-    // Strong pull to targets — distant bubbles snap back instantly,
-    // so hovering only nudges immediate neighbors.
+    // Softer positional pull so neighbors can drift a bit — including edge
+    // bubbles that need to escape past the grid boundary when crowded.
     const sim = forceSimulation(nodes)
       .alphaDecay(0.12)
       .velocityDecay(0.55)
       .alphaMin(0.02)
       .force(
         "x",
-        forceX((d) => d.tx).strength(0.9),
+        forceX((d) => d.tx).strength(0.35),
       )
       .force(
         "y",
-        forceY((d) => d.ty).strength(0.9),
+        forceY((d) => d.ty).strength(0.35),
       )
       .force(
         "collide",
@@ -170,23 +173,17 @@ export default function EmotionGrid() {
       )
       .stop()
       .on("tick", () => {
+        // Only translate here; scale is CSS-driven so it can transition smoothly
         for (const n of nodes) {
           const el = domRefs.current.get(n.key);
           if (!el) continue;
-          const scale = n.hover || n.selected ? HOVER_SCALE : 1;
-          el.style.transform = `translate3d(${n.x - BASE_RADIUS}px, ${n.y - BASE_RADIUS}px, 0) scale(${scale})`;
-        }
-      })
-      .on("end", () => {
-        for (const n of nodes) {
-          if (n.hover || n.selected) continue;
-          n.x = n.tx;
-          n.y = n.ty;
-          const el = domRefs.current.get(n.key);
-          if (el)
-            el.style.transform = `translate3d(${n.x - BASE_RADIUS}px, ${n.y - BASE_RADIUS}px, 0) scale(1)`;
+          el.style.transform = `translate3d(${n.x - BASE_RADIUS}px, ${n.y - BASE_RADIUS}px, 0)`;
         }
       });
+    // NOTE: intentionally no `.on("end", ...)` — a hard teleport there would
+    // create a visible one-frame snap if the sim ends before nodes arrive.
+    // With enough alpha budget on release (see scheduleShrink), forceX/forceY
+    // carry the node smoothly to its target instead.
 
     simulationRef.current = sim;
 
@@ -196,59 +193,62 @@ export default function EmotionGrid() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [initialNodes]);
 
-  // Hover handlers - only activate simulation on hover
-  const handleEnter = useCallback((key) => {
-    const node = nodesRef.current.find((n) => n.key === key);
-    if (!node) return;
-    node.hover = true;
-    node.radius = BASE_RADIUS * HOVER_SCALE;
-    setHoveredKey(key);
-    if (simulationRef.current) {
-      simulationRef.current.force(
-        "collide",
-        forceCollide((d) => d.radius + 4).strength(1),
-      );
-      simulationRef.current.alpha(0.4).restart();
-    }
+  // Schedule the delayed "release" of a bubble: after the CSS scale transition
+  // finishes (SHRINK_MS), reduce the collision radius and give the simulation
+  // a REAL energy budget so displaced neighbors ease back to their targets
+  // instead of snapping.
+  const scheduleShrink = useCallback((node) => {
+    if (node.shrinkTimer) clearTimeout(node.shrinkTimer);
+    node.shrinkTimer = setTimeout(() => {
+      if (node.selected) return;
+      node.radius = BASE_RADIUS;
+      if (simulationRef.current) {
+        simulationRef.current
+          .force(
+            "collide",
+            forceCollide((d) => d.radius + 4).strength(1),
+          )
+          .velocityDecay(0.4) // moderate friction — motion actually happens
+          .alphaDecay(0.04) // slow decay so sim has time to converge
+          .alphaMin(0.005)
+          .alpha(0.6) // enough energy to carry ~8px displacement home
+          .restart();
+      }
+    }, SHRINK_MS);
   }, []);
 
-  const handleLeave = useCallback((key) => {
-    const node = nodesRef.current.find((n) => n.key === key);
-    if (!node) return;
-    node.hover = false;
-    node.radius = BASE_RADIUS;
-    setHoveredKey((h) => (h === key ? null : h));
-    if (simulationRef.current) {
-      simulationRef.current.force(
-        "collide",
-        forceCollide((d) => d.radius + 4).strength(1),
-      );
-      simulationRef.current.alpha(0.4).restart();
-    }
-  }, []);
+  // (Hover physics removed by request — bubbles now only enlarge on click.)
 
-  // Sync selected state into node physics (larger collision radius + scale)
+  // Sync selected state into node physics (larger collision radius while selected)
   useEffect(() => {
     const nodes = nodesRef.current;
     if (!nodes.length) return;
-    let changed = false;
     for (const n of nodes) {
       const isSel = selected && selected.x === n.gx && selected.y === n.gy;
-      const wasSel = !!n.selected;
-      if (isSel !== wasSel) {
-        n.selected = isSel;
-        n.radius = n.hover || n.selected ? BASE_RADIUS * HOVER_SCALE : BASE_RADIUS;
-        changed = true;
+      if (isSel && !n.selected) {
+        // Grow immediately, push neighbors
+        n.selected = true;
+        if (n.shrinkTimer) {
+          clearTimeout(n.shrinkTimer);
+          n.shrinkTimer = null;
+        }
+        n.radius = BASE_RADIUS * SELECTED_SCALE;
+        if (simulationRef.current) {
+          simulationRef.current
+            .force("collide", forceCollide((d) => d.radius + 4).strength(1))
+            .velocityDecay(0.55)
+            .alphaDecay(0.12)
+            .alpha(0.4)
+            .restart();
+        }
+      } else if (!isSel && n.selected) {
+        // Deselecting: mark unselected NOW (so CSS shrink starts) but keep
+        // large collision radius until the bubble has visually returned.
+        n.selected = false;
+        scheduleShrink(n);
       }
     }
-    if (changed && simulationRef.current) {
-      simulationRef.current.force(
-        "collide",
-        forceCollide((d) => d.radius + 4).strength(1),
-      );
-      simulationRef.current.alpha(0.5).restart();
-    }
-  }, [selected]);
+  }, [selected, scheduleShrink]);
 
   const handleClick = useCallback(
     async (gx, gy) => {
@@ -377,7 +377,6 @@ export default function EmotionGrid() {
 
       {/* Bubbles */}
       {initialNodes.map((n) => {
-        const isHovered = hoveredKey === n.key;
         const isSelected =
           selected && selected.x === n.gx && selected.y === n.gy;
         const cached = emotionMap.get(n.key);
@@ -388,7 +387,7 @@ export default function EmotionGrid() {
               if (el) domRefs.current.set(n.key, el);
               else domRefs.current.delete(n.key);
             }}
-            className={`bubble${isHovered ? " is-hovered" : ""}${isSelected ? " is-selected" : ""}`}
+            className={`bubble${isSelected ? " is-selected" : ""}`}
             style={{
               width: BASE_RADIUS * 2,
               height: BASE_RADIUS * 2,
@@ -397,14 +396,14 @@ export default function EmotionGrid() {
               "--bubble-glow": n.colors.glow,
               "--aura-duration": `${n.auraDur}s`,
             }}
-            onMouseEnter={() => handleEnter(n.key)}
-            onMouseLeave={() => handleLeave(n.key)}
             onClick={() => handleClick(n.gx, n.gy)}
             data-testid={`emotion-bubble-${n.gx}-${n.gy}`}
             title={cached ? cached.name : `(${n.gx}, ${n.gy})`}
           >
-            <div className="bubble-aura" aria-hidden="true" />
-            <div className="bubble-core" aria-hidden="true" />
+            <div className="bubble-scale">
+              <div className="bubble-aura" aria-hidden="true" />
+              <div className="bubble-core" aria-hidden="true" />
+            </div>
           </div>
         );
       })}

@@ -26,12 +26,11 @@ const PADDING_BOTTOM = 200; // room for bottom axis label + legend
 const PADDING_LEFT = 220; // room for left axis label
 const PADDING_RIGHT = 220; // room for right axis label
 
-// Bubble sizing
-const BASE_RADIUS = 18;
+// Bubble sizing — bubbles 50% larger than baseline, with tighter spacing
+const BASE_RADIUS = 27;
 const HOVER_SCALE = 1.5;
-// Minimum spacing between adjacent bubble centers — generous padding so
-// hovering only nudges immediate neighbors, not the whole grid.
-const MIN_STEP = 78;
+// Minimum spacing between adjacent bubble centers — tight (marble-like).
+const MIN_STEP = 64;
 
 function coordKey(x, y) {
   return `${x},${y}`;
@@ -174,13 +173,13 @@ export default function EmotionGrid() {
         for (const n of nodes) {
           const el = domRefs.current.get(n.key);
           if (!el) continue;
-          const scale = n.hover ? HOVER_SCALE : 1;
+          const scale = n.hover || n.selected ? HOVER_SCALE : 1;
           el.style.transform = `translate3d(${n.x - BASE_RADIUS}px, ${n.y - BASE_RADIUS}px, 0) scale(${scale})`;
         }
       })
       .on("end", () => {
         for (const n of nodes) {
-          if (n.hover) continue;
+          if (n.hover || n.selected) continue;
           n.x = n.tx;
           n.y = n.ty;
           const el = domRefs.current.get(n.key);
@@ -227,6 +226,29 @@ export default function EmotionGrid() {
       simulationRef.current.alpha(0.4).restart();
     }
   }, []);
+
+  // Sync selected state into node physics (larger collision radius + scale)
+  useEffect(() => {
+    const nodes = nodesRef.current;
+    if (!nodes.length) return;
+    let changed = false;
+    for (const n of nodes) {
+      const isSel = selected && selected.x === n.gx && selected.y === n.gy;
+      const wasSel = !!n.selected;
+      if (isSel !== wasSel) {
+        n.selected = isSel;
+        n.radius = n.hover || n.selected ? BASE_RADIUS * HOVER_SCALE : BASE_RADIUS;
+        changed = true;
+      }
+    }
+    if (changed && simulationRef.current) {
+      simulationRef.current.force(
+        "collide",
+        forceCollide((d) => d.radius + 4).strength(1),
+      );
+      simulationRef.current.alpha(0.5).restart();
+    }
+  }, [selected]);
 
   const handleClick = useCallback(
     async (gx, gy) => {

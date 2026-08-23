@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import "@/App.css";
 import EmotionGrid from "@/components/EmotionGrid";
 import ThemeToggle from "@/components/ThemeToggle";
+import PanZoom from "@/components/PanZoom";
 
 const THEME_KEY = "emotions-theme";
 
@@ -30,7 +31,9 @@ export default function App() {
         <ThemeToggle theme={theme} onChange={setTheme} />
       </header>
 
-      <EmotionGrid theme={theme} />
+      <PanZoom>
+        <EmotionGrid theme={theme} />
+      </PanZoom>
 
       <aside className="glass-panel legend" data-testid="legend">
         <strong>How to read this</strong>

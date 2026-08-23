@@ -103,17 +103,14 @@ export default function EmotionGrid() {
     return () => window.removeEventListener("resize", measure);
   }, []);
 
-  // Compute grid dimensions — enforce MIN_STEP between bubbles.
-  // If viewport is too small, grid extends beyond and page scrolls.
+  // Compute grid dimensions — fixed logical spacing; PanZoom handles fit-to-view.
   const gridDims = useMemo(() => {
-    const viewportUsableW = size.w - PADDING_LEFT - PADDING_RIGHT;
-    const viewportUsableH = size.h - PADDING_TOP - PADDING_BOTTOM;
-    const stepX = Math.max(MIN_STEP, viewportUsableW / (GRID_COLS - 1));
-    const stepY = Math.max(MIN_STEP, viewportUsableH / (GRID_ROWS - 1));
+    const stepX = MIN_STEP;
+    const stepY = MIN_STEP;
     const totalW = PADDING_LEFT + PADDING_RIGHT + stepX * (GRID_COLS - 1);
     const totalH = PADDING_TOP + PADDING_BOTTOM + stepY * (GRID_ROWS - 1);
     return { stepX, stepY, totalW, totalH };
-  }, [size.w, size.h]);
+  }, []);
 
   // Compute target positions - equal spacing across grid
   const targetFor = useCallback(
@@ -129,8 +126,6 @@ export default function EmotionGrid() {
 
   // Initialize d3 simulation — only for hover physics (bubbles snap to grid otherwise)
   useEffect(() => {
-    if (size.w === 0 || size.h === 0) return;
-
     const nodes = initialNodes.map((n, i) => {
       const prev = nodesRef.current[i];
       const t = targetFor(n.gx, n.gy);
@@ -200,7 +195,7 @@ export default function EmotionGrid() {
       sim.stop();
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [initialNodes, size.w, size.h]);
+  }, [initialNodes]);
 
   // Hover handlers - only activate simulation on hover
   const handleEnter = useCallback((key) => {
@@ -297,16 +292,13 @@ export default function EmotionGrid() {
         position: "relative",
         width: gridDims.totalW,
         height: gridDims.totalH,
-        minWidth: "100vw",
-        minHeight: "100vh",
       }}
       data-testid="emotion-grid"
     >
       {/* Axis lines through the center (behind bubbles) */}
-      {size.w > 0 && (
-        <>
-          <div
-            className="axis-line axis-line-x"
+      <>
+        <div
+          className="axis-line axis-line-x"
             style={{
               top: originScreen.y,
               left: gridLeft - 30,
@@ -360,7 +352,6 @@ export default function EmotionGrid() {
             Low Energy ↓
           </div>
         </>
-      )}
 
       {/* Bubbles */}
       {initialNodes.map((n) => {

@@ -21,8 +21,8 @@ body {
   font-family: var(--font-body);
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
-  overflow-x: auto;
-  overflow-y: auto;
+  overflow: hidden;
+  overscroll-behavior: none;
 }
 
 /* ============ THEME TOKENS ============ */
@@ -201,6 +201,74 @@ body[data-theme="ethereal"] .ambient-bg .stars {
   box-shadow:
     0 30px 60px -30px rgba(0, 0, 0, 0.35),
     inset 0 1px 0 rgba(255, 255, 255, 0.14);
+}
+
+/* ============ PAN / ZOOM ============ */
+.pz-viewport {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  touch-action: none;
+  cursor: grab;
+  z-index: 5;
+}
+.pz-viewport.panning {
+  cursor: grabbing;
+}
+.pz-surface {
+  position: absolute;
+  top: 0;
+  left: 0;
+  transform-origin: 0 0;
+  will-change: transform;
+}
+
+.pz-controls {
+  position: fixed;
+  right: 32px;
+  top: 50%;
+  transform: translateY(-50%);
+  z-index: 40;
+  padding: 8px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  border-radius: 999px;
+}
+.pz-controls button {
+  width: 34px;
+  height: 34px;
+  border-radius: 999px;
+  border: none;
+  background: transparent;
+  color: var(--fg);
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  transition:
+    background-color 220ms ease,
+    color 220ms ease;
+}
+.pz-controls button:hover {
+  background: var(--surface-border);
+}
+.pz-scale {
+  font-family: var(--font-body);
+  font-size: 0.68rem;
+  letter-spacing: 0.1em;
+  color: var(--fg-muted);
+  padding: 2px 0;
+  min-width: 34px;
+  text-align: center;
+  user-select: none;
+}
+.pz-divider {
+  width: 20px;
+  height: 1px;
+  background: var(--surface-border);
+  margin: 4px 0;
 }
 
 /* ============ AXES ============ */

@@ -1,0 +1,106 @@
+{
+  "theme_strategy": "Hybrid Ethereal/Cosmic. Light mode represents a 'Soft, ethereal light' with pearlescent gradients and delicate translucency. Dark mode represents a 'Dark, dreamy cosmic' with deep void blacks, starry textures, and high-contrast luminescent glows. Strict avoidance of generic purple gradients on white backgrounds.",
+  "typography": {
+    "headings": "Spectral, serif (or Playfair Display). Creates an elegant, introspective, and sophisticated tone. Must use tight letter spacing for large sizes.",
+    "body": "Outfit, sans-serif. Clean, geometric, extremely legible for UI panels and labels.",
+    "rules": "Never center-align large blocks of text. H1s should not exceed text-6xl. Ensure high contrast in both themes. Provide Google Fonts import links in CSS."
+  },
+  "colors": {
+    "light_mode_ethereal": {
+      "background": "hsl(210, 20%, 98%)",
+      "surface": "rgba(255, 255, 255, 0.7)",
+      "text": "hsl(220, 40%, 10%)"
+    },
+    "dark_mode_cosmic": {
+      "background": "hsl(240, 30%, 4%)",
+      "surface": "rgba(10, 10, 20, 0.6)",
+      "text": "hsl(210, 40%, 98%)"
+    },
+    "quadrants": {
+      "Q1_Pleasant_HighEnergy": "Warm Peach / Gold (e.g., #FFB86C, #F1FA8C)",
+      "Q2_Unpleasant_HighEnergy": "Soft Magenta / Ember (e.g., #FF5555, #FF79C6)",
+      "Q3_Unpleasant_LowEnergy": "Deep Indigo / Muted Purple (e.g., #8BE9FD, #BD93F9)",
+      "Q4_Pleasant_LowEnergy": "Serene Mint / Cyan (e.g., #50FA7B, #8BE9FD)"
+    },
+    "rules": "Colors should subtly shift across the grid based on x/y values. Use CSS variables to dynamically set bubble colors. Tint all greys slightly with blue for cosmic, and warm beige for ethereal."
+  },
+  "visual_enhancers": {
+    "aura_effect": "Apply a custom CSS @keyframes animation to each bubble to create a pulsing 'aura'. Use box-shadow or pseudo-elements (::after) with filter: blur(8px) and scaling to simulate a breathing, fluid glow.",
+    "glassmorphism": "Use 'Crystal Glass' rules for floating panels. backdrop-blur-xl, saturate-150, 1px delicate inner border (white/20 in light mode, white/10 in dark mode).",
+    "theme_transition": "Use smooth CSS transitions (duration-500) for theme toggling so the background crossfades rather than flashes."
+  },
+  "components": {
+    "EmotionGrid": {
+      "description": "Main d3-force visualization container. Handles physics simulation and DOM updates.",
+      "component_path": "/app/frontend/src/components/EmotionGrid.js"
+    },
+    "EmotionBubble": {
+      "description": "Individual node element. Renders the color, aura animation, and handles pointer events.",
+      "component_path": "/app/frontend/src/components/EmotionBubble.js"
+    },
+    "EmotionDetailPanel": {
+      "description": "Glassmorphic floating panel showing clicked emotion name and description. Must include a close button.",
+      "component_path": "/app/frontend/src/components/EmotionDetailPanel.js"
+    },
+    "ThemeToggle": {
+      "description": "A visually distinct switch in the header to alternate between Ethereal and Cosmic.",
+      "component_path": "/app/frontend/src/components/ThemeToggle.js"
+    }
+  },
+  "grids_and_layouts": {
+    "structure": "Full viewport immersive container. Floating header with Theme Toggle. Floating side/bottom panel for detail view.",
+    "axis": "Render subtle grid lines or crosshairs (x/y axis) in the background with labels indicating the 4 extremes (High Energy, Low Energy, Pleasant, Unpleasant).",
+    "bubble_grid": "The -8 to +8 grid has 17x17 = 289 potential slots. Use d3-force to initialize nodes near their designated (x, y) grid positions, but allow them to float slightly."
+  },
+  "motion": {
+    "bubble_physics": "On hover, the target bubble scales up 1.5x. d3-force's forceCollide must dynamically update the radius of the hovered node so neighboring bubbles naturally push away, creating a physical 'bubble' feel.",
+    "panel_entrance": "Use framer-motion to slide-in and fade-in the detail panel when a bubble is clicked.",
+    "continuous_drift": "Apply a very weak random forceX and forceY or velocity decay in d3-force so the bubbles are never entirely static, simulating organic movement."
+  },
+  "3d_libraries_and_steps": {
+    "library": "d3-force",
+    "installation": "yarn add d3-force framer-motion",
+    "implementation_steps": [
+      "Generate an array of emotion nodes with grid coordinates (x: -8 to 8, y: -8 to 8).",
+      "Map coordinates to pixel positions based on viewport size.",
+      "Initialize forceSimulation with forceX, forceY targeting the pixel positions, and forceCollide for bubble separation.",
+      "For performance with 289 nodes, do NOT use React state for the tick event. Instead, use a React ref to hold DOM elements and update their style.transform directly on each d3 tick.",
+      "On bubble hover, update the specific node's radius in the forceCollide function and call simulation.alpha(0.3).restart() to trigger the pushing effect."
+    ]
+  },
+  "image_urls": [
+    {
+      "category": "cosmic_background",
+      "url": "https://images.pexels.com/photos/1341279/pexels-photo-1341279.jpeg?auto=compress&cs=tinysrgb&dpr=2&h=650&w=940",
+      "description": "Starry night sky for Cosmic theme overlay. Apply opacity and mix-blend-mode (screen or overlay) so it doesn't overpower the UI."
+    },
+    {
+      "category": "ethereal_background",
+      "url": "https://images.unsplash.com/photo-1614850523060-8da1d56ae167?crop=entropy&cs=srgb&fm=jpg&ixid=M3w4NjAzMzN8MHwxfHNlYXJjaHwxfHxzb2Z0JTIwZXRoZXJlYWwlMjBwZWFybGVzY2VudCUyMGJhY2tncm91bmQlMjBsaWdodHxlbnwwfHx8fDE3ODc0NDkzODN8MA&ixlib=rb-4.1.0&q=85",
+      "description": "Soft pearlescent gradient for Ethereal theme overlay. Use with low opacity to add texture to the background."
+    }
+  ],
+  "accessibility": {
+    "contrast": "Ensure the emotion text inside bubbles (if visible) or in the detail panel meets 4.5:1 ratio.",
+    "motion_preference": "Check for @media (prefers-reduced-motion) and disable d3-force continuous drift or scale down the hover effect if true.",
+    "testing": "All interactive bubbles must have data-testid=\"emotion-bubble-{name}\". The theme toggle must have data-testid=\"theme-toggle-button\"."
+  },
+  "instructions_to_main_agent": "Focus on the physics interaction. The 'pushing neighbors aside' requirement MUST be implemented by dynamically updating the d3-force collision radius on hover and restarting the simulation with a small alpha. Avoid heavy React re-renders by mutating DOM node transforms directly during the d3 tick. Create a beautiful, subtle gradient background based on the active theme, and ensure the bubble colors map smoothly across the 4 quadrants. Use .js extensions for all files.",
+  "UNIVERSAL_GUIDELINES_FOR_MAIN_AGENT": [
+    "You tend to converge toward generic, 'on distribution' outputs. Avoid this: make creative, distinctive frontends that surprise and delight.",
+    "Dark colors look good when used independently without gradients. DO NOT use dark colors as gradients.",
+    "Don't make generic centered layouts, simplistic gradients, and uniform styling.",
+    "Create depth through layered design elements with z-index hierarchy.",
+    "Use glass-morphism effects with backdrop filters (12-24px blur).",
+    "You MUST NOT apply universal transition. Eg: transition: all. Always add transitions for specific interactive elements.",
+    "You MUST NOT center align the app container. Do not add .App { text-align: center; }.",
+    "Always use modern button styles like pill-shaped, or sharp button with interaction animations.",
+    "NEVER use AI assistant Emoji characters like 🤖🧠💭💡🔮🎯 etc for icons.",
+    "Every interaction needs micro-animations - hover states, transitions, parallax effects, and entrance animations.",
+    "Use 2-3x more spacing than feels comfortable.",
+    "Subtle grain textures, noise overlays, custom cursors, selection states, and loading animations separate good from extraordinary.",
+    "All interactive and key informational elements MUST include a data-testid attribute.",
+    "Prioritize using pre-existing components from src/components/ui when applicable.",
+    "Create new components that match the style and conventions of existing components when needed."
+  ]
+}

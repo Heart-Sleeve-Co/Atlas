@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import "@/App.css";
 import EmotionGrid from "@/components/EmotionGrid";
+import EmotionDetailPanel from "@/components/EmotionDetailPanel";
 import ThemeToggle from "@/components/ThemeToggle";
 import PanZoom from "@/components/PanZoom";
 import { ChevronDown, HelpCircle } from "lucide-react";
@@ -13,6 +14,8 @@ export default function App() {
     return localStorage.getItem(THEME_KEY) || "cosmic";
   });
   const [legendOpen, setLegendOpen] = useState(false);
+  const [selected, setSelected] = useState(null);
+  const [loadingSelected, setLoadingSelected] = useState(false);
 
   useEffect(() => {
     document.body.setAttribute("data-theme", theme);
@@ -27,15 +30,32 @@ export default function App() {
 
       <header className="app-header">
         <div className="brand" data-testid="brand-header">
-          <h1>The Feeling Field</h1>
-          <p>an atlas of emotion</p>
+          <h1>Atlas</h1>
+          <p>a navigator for feelings</p>
         </div>
         <ThemeToggle theme={theme} onChange={setTheme} />
       </header>
 
       <PanZoom>
-        <EmotionGrid theme={theme} />
+        <EmotionGrid
+          theme={theme}
+          selected={selected}
+          setSelected={setSelected}
+          loadingSelected={loadingSelected}
+          setLoadingSelected={setLoadingSelected}
+        />
       </PanZoom>
+
+      {/* HUD detail panel — always visible in the bottom-left, rendered
+          OUTSIDE PanZoom so its position:fixed is anchored to the viewport. */}
+      <EmotionDetailPanel
+        emotion={selected}
+        loading={loadingSelected}
+        onClose={() => {
+          setSelected(null);
+          setLoadingSelected(false);
+        }}
+      />
 
       <aside
         className={`glass-panel legend${legendOpen ? " is-open" : " is-closed"}`}

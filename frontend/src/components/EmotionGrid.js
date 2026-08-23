@@ -7,7 +7,6 @@ import {
   forceCollide,
 } from "d3-force";
 import { emotionColor } from "@/components/emotionColors";
-import EmotionDetailPanel from "@/components/EmotionDetailPanel";
 
 const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
 const API = `${BACKEND_URL}/api`;
@@ -57,15 +56,13 @@ function coordKey(x, y) {
   return `${x},${y}`;
 }
 
-export default function EmotionGrid() {
+export default function EmotionGrid({ selected, setSelected, loadingSelected, setLoadingSelected }) {
   const containerRef = useRef(null);
   const nodesRef = useRef([]);
   const domRefs = useRef(new Map());
   const simulationRef = useRef(null);
   const [size, setSize] = useState({ w: 0, h: 0 });
   const [emotionMap, setEmotionMap] = useState(new Map());
-  const [selected, setSelected] = useState(null);
-  const [loadingSelected, setLoadingSelected] = useState(false);
 
   // Precompute 169 nodes
   const initialNodes = useMemo(() => {
@@ -362,7 +359,7 @@ export default function EmotionGrid() {
         setLoadingSelected(false);
       }
     },
-    [emotionMap],
+    [emotionMap, setSelected, setLoadingSelected],
   );
 
   const originScreen = useMemo(() => targetFor(0, 0), [targetFor]);
@@ -471,15 +468,6 @@ export default function EmotionGrid() {
           </div>
         );
       })}
-
-      <EmotionDetailPanel
-        emotion={selected}
-        loading={loadingSelected}
-        onClose={() => {
-          setSelected(null);
-          setLoadingSelected(false);
-        }}
-      />
     </div>
   );
 }

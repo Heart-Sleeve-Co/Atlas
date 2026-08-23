@@ -64,6 +64,30 @@ class TestEmotionsList:
         # no duplicate coordinate across curated+generated
         assert len(keys) == len(em), "duplicate coordinates returned (curated + generated overlap)"
 
+    # iteration_7: full 13x13 coverage expected (curated placeholders fill gaps)
+    def test_exactly_169_full_grid(self, api):
+        r = api.get(f"{BASE_URL}/api/emotions", timeout=30)
+        em = r.json()["emotions"]
+        assert len(em) == 169, f"expected 169 emotions, got {len(em)}"
+        keys = {(e["x"], e["y"]) for e in em}
+        expected = {(x, y) for x in range(-6, 7) for y in range(-6, 7)}
+        assert keys == expected, f"missing cells: {sorted(expected - keys)[:10]}"
+
+    def test_known_placeholder_and_curated_entries(self, api):
+        r = api.get(f"{BASE_URL}/api/emotions", timeout=30)
+        m = {(e["x"], e["y"]): e for e in r.json()["emotions"]}
+        assert m[(-5, 6)]["name"].startswith("TODO"), m[(-5, 6)]["name"]
+        assert m[(3, 3)]["name"] == "Cheerful"
+        assert isinstance(m[(3, 3)]["description"], str) and len(m[(3, 3)]["description"]) > 10
+
+    def test_generate_origin_curated(self, api):
+        r = api.post(f"{BASE_URL}/api/emotions/generate", json={"x": 0, "y": 0}, timeout=90)
+        assert r.status_code == 200, r.text[:300]
+        d = r.json()
+        assert d["x"] == 0 and d["y"] == 0
+        assert d["source"] == "curated"
+        assert isinstance(d["name"], str) and d["name"]
+
 
 # ---- Module: POST /api/emotions/generate ----
 class TestGenerate:

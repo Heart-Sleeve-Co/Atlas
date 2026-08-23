@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, useMemo, useCallback } from "react";
+import { useEffect, useLayoutEffect, useRef, useState, useMemo, useCallback } from "react";
 import axios from "axios";
 import {
   forceSimulation,
@@ -30,11 +30,28 @@ const PADDING_RIGHT = 220; // room for right axis label
 const BASE_RADIUS = 27;
 // Scale factor applied to a bubble when it is selected (clicked).
 const SELECTED_SCALE = 1.5;
+// Extra clearance (in px) around a selected bubble's outer highlight so
+// its outline never touches neighboring bubbles.
+const SELECTED_PADDING = 10;
 // Minimum spacing between adjacent bubble centers — tight (marble-like).
 const MIN_STEP = 64;
 
 // How long the CSS scale transition on .bubble-scale lasts — must match CSS.
 const SHRINK_MS = 420;
+
+// easeOutBack — mirrors the CSS cubic-bezier(0.34, 1.35, 0.5, 1). Used on
+// the GROW phase so the collision radius leads the visual scale slightly.
+function easeOutBack(t) {
+  const c1 = 1.70158;
+  const c3 = c1 + 1;
+  return 1 + c3 * Math.pow(t - 1, 3) + c1 * Math.pow(t - 1, 2);
+}
+
+// easeOutCubic — non-overshooting; used on SHRINK so the collision radius
+// never dips below the CSS scale-down (would cause a mid-animation crowd).
+function easeOutCubic(t) {
+  return 1 - Math.pow(1 - t, 3);
+}
 
 function coordKey(x, y) {
   return `${x},${y}`;
@@ -126,7 +143,7 @@ export default function EmotionGrid() {
     [gridDims],
   );
 
-  // Initialize d3 simulation — only for hover physics (bubbles snap to grid otherwise)
+  // Initialize d3 simulation — pushes neighbors when a bubble is selected
   useEffect(() => {
     const nodes = initialNodes.map((n, i) => {
       const prev = nodesRef.current[i];
@@ -153,23 +170,24 @@ export default function EmotionGrid() {
       }
     }
 
-    // Softer positional pull so neighbors can drift a bit — including edge
-    // bubbles that need to escape past the grid boundary when crowded.
+    // Softer positional pull so neighbors can drift; collision force is set
+    // once here and uses `iterations(3)` so a single tick can converge the
+    // non-overlap constraint even during large radius changes.
     const sim = forceSimulation(nodes)
-      .alphaDecay(0.12)
-      .velocityDecay(0.55)
-      .alphaMin(0.02)
+      .alphaDecay(0.08)
+      .velocityDecay(0.5)
+      .alphaMin(0.005)
       .force(
         "x",
-        forceX((d) => d.tx).strength(0.35),
+        forceX((d) => d.tx).strength(0.5),
       )
       .force(
         "y",
-        forceY((d) => d.ty).strength(0.35),
+        forceY((d) => d.ty).strength(0.5),
       )
       .force(
         "collide",
-        forceCollide((d) => d.radius + 4).strength(1),
+        forceCollide((d) => d.radius + 4).strength(1).iterations(3),
       )
       .stop()
       .on("tick", () => {
@@ -180,10 +198,8 @@ export default function EmotionGrid() {
           el.style.transform = `translate3d(${n.x - BASE_RADIUS}px, ${n.y - BASE_RADIUS}px, 0)`;
         }
       });
-    // NOTE: intentionally no `.on("end", ...)` — a hard teleport there would
-    // create a visible one-frame snap if the sim ends before nodes arrive.
-    // With enough alpha budget on release (see scheduleShrink), forceX/forceY
-    // carry the node smoothly to its target instead.
+    // No `.on("end", ...)` — a hard teleport there would create a visible
+    // one-frame snap. animateNodeRadius keeps the sim converging each rAF frame.
 
     simulationRef.current = sim;
 
@@ -193,62 +209,110 @@ export default function EmotionGrid() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [initialNodes]);
 
-  // Schedule the delayed "release" of a bubble: after the CSS scale transition
-  // finishes (SHRINK_MS), reduce the collision radius and give the simulation
-  // a REAL energy budget so displaced neighbors ease back to their targets
-  // instead of snapping.
-  const scheduleShrink = useCallback((node) => {
-    if (node.shrinkTimer) clearTimeout(node.shrinkTimer);
-    node.shrinkTimer = setTimeout(() => {
-      if (node.selected) return;
-      node.radius = BASE_RADIUS;
-      if (simulationRef.current) {
-        simulationRef.current
-          .force(
-            "collide",
-            forceCollide((d) => d.radius + 4).strength(1),
-          )
-          .velocityDecay(0.4) // moderate friction — motion actually happens
-          .alphaDecay(0.04) // slow decay so sim has time to converge
-          .alphaMin(0.005)
-          .alpha(0.6) // enough energy to carry ~8px displacement home
-          .restart();
-      }
-    }, SHRINK_MS);
-  }, []);
+  // Ramp a node's collision radius over `duration` ms using rAF. Each frame:
+  //  - update node.radius via easeOutBack (matches the CSS scale curve)
+  //  - keep alpha alive so forceX/forceY pull neighbors home during shrink
+  //  - call sim.tick() a few times so collision converges within THIS frame,
+  //    instead of trailing behind by many ticks (which caused the highlight
+  //    to briefly overlap neighbors during the growth transition).
+  // Also biases the radius slightly ahead of the CSS scale so the visual
+  // gap between the selected bubble's highlight and its neighbors never dips
+  // below the resting gap.
+  // Ramp both physics AND visual for a node from its current state to target.
+  // Explicit start/end scales avoid deriving visual scale from the collision
+  // radius (which is padded and would produce a visible pop).
+  const animateNodeRadius = useCallback(
+    (node, targetRadius, startScale, endScale, duration) => {
+      if (node._radiusRaf) cancelAnimationFrame(node._radiusRaf);
+      const startRadius = node.radius;
+      const isGrow = targetRadius > startRadius;
+      const ease = isGrow ? easeOutBack : easeOutCubic;
+      const start = performance.now();
+      const sim = simulationRef.current;
+      const bubbleEl = domRefs.current.get(node.key);
+      const scaleEl = bubbleEl ? bubbleEl.querySelector(".bubble-scale") : null;
+      if (sim) sim.alpha(0.5);
+      const step = () => {
+        const now = performance.now();
+        const t = Math.min(1, (now - start) / duration);
+        const eased = ease(t);
+        node.radius = startRadius + (targetRadius - startRadius) * eased;
+        if (scaleEl) {
+          const s = startScale + (endScale - startScale) * eased;
+          scaleEl.style.transform = `scale(${s})`;
+        }
+        if (sim) {
+          // Re-init forceCollide's cached radii so per-frame node.radius takes effect.
+          const collide = sim.force("collide");
+          if (collide) collide.radius(collide.radius());
+          sim.alpha(Math.max(sim.alpha(), 0.2));
+          sim.tick(5);
+          // Only write transforms for nodes whose position actually changed.
+          for (const n of nodesRef.current) {
+            if (n._prevX === n.x && n._prevY === n.y) continue;
+            n._prevX = n.x;
+            n._prevY = n.y;
+            const el = domRefs.current.get(n.key);
+            if (!el) continue;
+            el.style.transform = `translate3d(${n.x - BASE_RADIUS}px, ${n.y - BASE_RADIUS}px, 0)`;
+          }
+        }
+        if (t < 1) {
+          node._radiusRaf = requestAnimationFrame(step);
+        } else {
+          node._radiusRaf = null;
+          // Pin the final visual scale via inline style so nothing snaps.
+          if (scaleEl) scaleEl.style.transform = `scale(${endScale})`;
+          // If we just finished a shrink, release the pin so neighbors can settle.
+          if (!isGrow) {
+            node.fx = null;
+            node.fy = null;
+          }
+          if (sim) sim.alpha(0.25).restart();
+        }
+      };
+      node._radiusRaf = requestAnimationFrame(step);
+    },
+    [],
+  );
 
-  // (Hover physics removed by request — bubbles now only enlarge on click.)
-
-  // Sync selected state into node physics (larger collision radius while selected)
-  useEffect(() => {
+  // Sync selected state into node physics. useLayoutEffect fires BEFORE paint,
+  // so we can set the frame-0 inline transform on the .bubble-scale element
+  // before the browser renders — no snap-to-full-size flash.
+  useLayoutEffect(() => {
     const nodes = nodesRef.current;
     if (!nodes.length) return;
     for (const n of nodes) {
       const isSel = selected && selected.x === n.gx && selected.y === n.gy;
       if (isSel && !n.selected) {
-        // Grow immediately, push neighbors
         n.selected = true;
-        if (n.shrinkTimer) {
-          clearTimeout(n.shrinkTimer);
-          n.shrinkTimer = null;
-        }
-        n.radius = BASE_RADIUS * SELECTED_SCALE;
-        if (simulationRef.current) {
-          simulationRef.current
-            .force("collide", forceCollide((d) => d.radius + 4).strength(1))
-            .velocityDecay(0.55)
-            .alphaDecay(0.12)
-            .alpha(0.4)
-            .restart();
-        }
+        // Pin the selected node at its rest target so collision push affects
+        // only the neighbors (selected bubble doesn't drift under physics).
+        n.fx = n.tx;
+        n.fy = n.ty;
+        // Set inline scale(1) synchronously before paint, then ramp up.
+        const scaleEl = domRefs.current
+          .get(n.key)
+          ?.querySelector(".bubble-scale");
+        if (scaleEl) scaleEl.style.transform = "scale(1)";
+        animateNodeRadius(
+          n,
+          BASE_RADIUS * SELECTED_SCALE + SELECTED_PADDING,
+          1,
+          SELECTED_SCALE,
+          SHRINK_MS,
+        );
       } else if (!isSel && n.selected) {
-        // Deselecting: mark unselected NOW (so CSS shrink starts) but keep
-        // large collision radius until the bubble has visually returned.
         n.selected = false;
-        scheduleShrink(n);
+        // Set inline scale(SELECTED_SCALE) synchronously before paint, then ramp down.
+        const scaleEl = domRefs.current
+          .get(n.key)
+          ?.querySelector(".bubble-scale");
+        if (scaleEl) scaleEl.style.transform = `scale(${SELECTED_SCALE})`;
+        animateNodeRadius(n, BASE_RADIUS, SELECTED_SCALE, 1, SHRINK_MS);
       }
     }
-  }, [selected, scheduleShrink]);
+  }, [selected, animateNodeRadius]);
 
   const handleClick = useCallback(
     async (gx, gy) => {

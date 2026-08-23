@@ -1,0 +1,33 @@
+{
+  "summary": "Iteration 7 (10th round) verification of the frame-locked visual+physics fix in EmotionGrid.js. Backend: 12/12 pytest tests pass, GET /api/emotions returns exactly 169 emotions. Frontend in-page rAF sampling (container ~5.7fps, pan/zoom at 97% so rest gap measures 9.75px, bubble diameter 52.6px): GROW min-gap FAILS (-3.41px overlap at t=135ms), GROW SYNC neighbor displacement FAILS (61% of final travel at t=336ms), SHRINK min-gap FAILS (6.56px at t=243ms), neighbor return delta 2.79px (marginally > 2.5px). PASS: settled gap 17.07px, scale@~420ms = 1.461, shrink smoothness (max 4.79px/100ms), no is-hovered class on hover, detail panel shows 'Cheerful' with no detail-coord/detail-source.",
+  "backend_issues": { "critical": [], "minor": [] },
+  "frontend_issues": {
+    "ui_bugs": [
+      {"component": "EmotionGrid / .bubble-scale", "issue": "On select, the visual bubble SNAPS instantly to scale(1.5) before any physics push. Sampled at t=135ms: computed scale already 1.5 while the neighbor had not moved -> edge gap -3.41px (highlight overlaps neighbor). Cause: removing the CSS transition means the '.bubble.is-selected .bubble-scale { transform: scale(1.5) }' rule paints at full size on the same frame React adds the class, while animateNodeRadius' first rAF frame (and its inline transform) only runs after that paint (selection effect is a post-paint useEffect).", "selector": "[data-testid='emotion-bubble-0-0'] .bubble-scale", "priority": "CRITICAL"},
+      {"component": "EmotionGrid / animateNodeRadius (shrink)", "issue": "Shrink start scale is derived from the collision radius which INCLUDES SELECTED_PADDING: startScale = 1 + (50.5-27)/27 = 1.87. So on close the bubble first snaps to scale 1 (class removed, no transition), then JS pops it back up to ~1.87x and eases down. Measured: gap 29.72px at t=16ms (already unscaled) then 6.56px at t=243ms (bubble visually ~1.79x). Visible pop + gap dip below rest.", "selector": "[data-testid='detail-close']", "priority": "CRITICAL"},
+      {"component": "EmotionGrid physics", "issue": "GROW SYNC: neighbor displacement only 61.4% of final travel (16.88px of 27.49px) at t=336ms (nearest sampled frame to the 420ms target); physics settles well after the visual ramp ends.", "selector": "[data-testid='emotion-bubble-1-0']", "priority": "HIGH"},
+      {"component": "EmotionGrid physics (shrink return)", "issue": "2s after close the neighbor is 2.79px away from its baseline position (target +/-2.5px). forceX/forceY relax leaves a small residual offset.", "selector": "[data-testid='emotion-bubble-1-0']", "priority": "MEDIUM"}
+    ],
+    "integration_issues": [],
+    "design_issues": []
+  },
+  "test_report_links": ["/app/backend/tests/backend_test.py", "/app/test_reports/pytest/pytest_results.xml"],
+  "action_items": [
+    "Stop the pre-paint snap: move the selection->animateNodeRadius effect to useLayoutEffect and write the frame-0 inline transform (scale = current scale) synchronously, and/or remove the '.bubble.is-selected .bubble-scale { transform: scale(1.5) }' rule so CSS never paints full size before the JS ramp starts.",
+    "Fix shrink startScale: do not derive it from node.radius (which contains SELECTED_PADDING). Track the visual scale separately (e.g. node.visualScale, or read the current computed scale) so shrink starts at exactly SELECTED_SCALE (1.5) and never pops to 1.87.",
+    "Given the ~5-6fps container, consider keeping physics ahead of visuals (lead the collision radius, or lag the visual scale by one frame) so the min edge gap can never dip below the rest gap on either grow or shrink.",
+    "Tighten the shrink relaxation (higher forceX/forceY strength or more ticks after the ramp) so neighbors return within +/-2.5px of baseline."
+  ],
+  "critical_code_review_comments": [
+    "EmotionGrid.js:229 startScale = 1 + (startRadius - BASE_RADIUS)/BASE_RADIUS conflates collision radius (includes SELECTED_PADDING) with visual scale — root cause of the shrink pop to 1.87x.",
+    "EmotionGrid.js:276 selection sync uses useEffect (post-paint); the CSS is-selected scale therefore paints one frame before the JS ramp begins.",
+    "EmotionGrid.js:268 clearing the inline transform at ramp end relies on the CSS class for steady state — on deselect the class is removed before the ramp starts, producing a scale-1 frame then a JS-driven pop."
+  ],
+  "updated_files": [],
+  "success_rate": {"backend": "100%", "frontend": "50% (4/8 animation assertions passed)"},
+  "seed_data_creation": "none",
+  "should_call_test_agent_after_fix": true,
+  "should_main_agent_self_test": false,
+  "context_for_next_testing_agent": "Use in-page rAF sampling with .bubble-scale getBoundingClientRect for gap (pan/zoom is 97%, so rest gap = 9.75px and diameter = 52.6px; threshold 9px is fine). Container renders ~4 rAF frames in 700ms (~5.7fps), so t=420ms assertions land on the nearest sample (~336ms) — report the sample timestamp. Backend suite /app/backend/tests/backend_test.py is green (12 tests, 169 emotions verified); no backend re-test needed unless server.py changes. Remaining failures are all grow/shrink visual-vs-physics sync (see action items).",
+  "rca_of_the_issue": "Removing the CSS transition on .bubble-scale made the class-driven scale(1.5) apply instantaneously at the paint that adds .is-selected, i.e. before animateNodeRadius' first rAF frame runs the physics push -> transient -3.41px overlap on grow. Symmetrically on deselect the class is removed (instant scale 1) and then the JS ramp restarts the visual at startScale 1.87 (because startRadius includes SELECTED_PADDING), producing an oversized pop and a 6.56px gap dip. Fix requires synchronous (useLayoutEffect) frame-0 inline transform plus a visual-scale value decoupled from the padded collision radius."
+}

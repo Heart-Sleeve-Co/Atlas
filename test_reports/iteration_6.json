@@ -1,0 +1,32 @@
+{
+  "summary": "Iteration 9 regression retest of EmotionGrid bubble grow/shrink sync. Backend: 12/12 pytest tests pass (169 emotions, POST /api/emotions/generate 200). Frontend: 6 of 8 requested checks PASS (neighbors DO move now - d3-force collide re-init fix works; grow min-gap, grow sync metric 95.9%, shrink convergence, no-hover, detail-panel clean). 2 FAIL: SHRINK phase still dips to -0.38px (bubbles overlap) and violates the <=5px/100ms smoothness rule. Instrumented per-frame CSS scale + center distance to find RCA.",
+  "backend_issues": { "critical": [], "minor": [] },
+  "frontend_issues": {
+    "ui_bugs": [
+      {"component": "EmotionGrid animateNodeRadius (SHRINK)", "issue": "On detail-close the collision radius contracts fully within 420ms while the CSS .bubble-scale transform is still at scale(1.500) until t~500ms. Neighbors rush inward and physically overlap the still-large selected bubble. Measured edge gap: t=212ms -> 5.5px, t=394ms -> -0.38px (overlap), then snaps to 12px at t=715ms. Requirement was min gap >= 9px.", "selector": "[data-testid=\"emotion-bubble-0-0\"] / [data-testid=\"emotion-bubble-1-0\"]", "priority": "HIGH"},
+      {"component": "EmotionGrid animateNodeRadius (SHRINK)", "issue": "Non-smooth decay: center distance drops 72.97 -> 67.13 (5.84px) inside one 100ms bucket at t=300ms, exceeding the 5px/100ms budget. Caused by the same physics-leads-visual desync, not by easing overshoot (easeOutCubic confirmed, no overshoot).", "selector": ".bubble-scale", "priority": "MEDIUM"},
+      {"component": "EmotionGrid GROW visual desync", "issue": "Passes the numeric gap asserts, but the sequence is visually wrong: CSS scale stays at 1.000 until t~500ms while neighbors have ALREADY fully moved out by t=140ms (gap 10 -> 28.6px, dist 64 -> 82.6). User sees bubbles part first, then the selected bubble pops to 1.5x. Not 'in sync'.", "selector": ".bubble.is-selected .bubble-scale", "priority": "MEDIUM"}
+    ],
+    "integration_issues": [],
+    "design_issues": []
+  },
+  "test_report_links": ["/app/backend/tests/backend_test.py", "/app/test_reports/pytest/pytest_results.xml"],
+  "action_items": [
+    "Stop relying on the CSS `transition: transform 420ms` for .bubble-scale. Under this container's load (measured idle rAF rate = 7fps, and the rAF loop ticks the 169-node sim 4x + writes 169 transforms per frame) the style recalc that starts the transition is delayed ~400-500ms, so the CSS visual and the JS physics can never be in sync.",
+    "Fix: drive the visual scale from the SAME rAF step as node.radius. In animateNodeRadius, after computing `eased`, set the selected element's inner .bubble-scale transform directly: `scaleEl.style.transform = 'scale(' + (1 + (SELECTED_SCALE-1)*eased) + ')'` (and remove/neutralise the CSS transition, e.g. `transition: none` while a JS ramp owns the element). This frame-locks visual and collision radius, which fixes BOTH the shrink overlap and the grow pop.",
+    "If the CSS transition is kept, the shrink ramp must LAG the visual instead of leading it (easeOutCubic front-loads 56% of the shrink in the first 100ms). An ease-in curve plus a ~150ms delay would avoid the negative gap, but this is a fragile workaround given the variable frame budget.",
+    "Consider reducing per-frame cost: only write transforms for nodes whose x/y actually changed (currently all 169 are rewritten every frame), which will also reduce the style-recalc delay."
+  ],
+  "critical_code_review_comments": [
+    "EmotionGrid.js: `sim.tick(4)` + 169 DOM transform writes per rAF frame on a 7fps container is the direct cause of the delayed CSS transition start; the animation contract (physics matches CSS timing) is unenforceable while the two are on different clocks.",
+    "collide.radius(collide.radius()) re-initialisation fix is correct and verified working - neighbours now displace 95.9% of their final travel by t=420ms."
+  ],
+  "updated_files": [],
+  "success_rate": {"backend": "100%", "frontend": "75%"},
+  "seed_data_creation": "None. Read-only against existing 169 curated emotions.",
+  "should_call_test_agent_after_fix": true,
+  "should_main_agent_self_test": false,
+  "test_credentials": "Not required - app has no auth.",
+  "context_for_next_testing_agent": "Measurement recipe that works on this slow container: install in-page helpers that (a) read scale via new DOMMatrix(getComputedStyle('.pz-surface').transform).a (=0.9747), (b) measure the .bubble-scale child rects (NOT the .bubble wrapper - the wrapper is fixed 54px and never reflects the CSS scale), (c) sample via requestAnimationFrame started BEFORE the click. Baselines confirmed: bubble diameter 54, rest edge gap 10.00px, rest centre dist 64.00. Settled after select: gap 17.3px, dist 84.8. Only ~5 rAF samples land in 800ms (7fps), so real dips may be worse than sampled. PASSED this round: neighbours-move (settled gap 17.32 >= 12), grow min gap 16.86 >= 9, gap@450ms 16.92 >= 12, grow displacement 95.9% >= 85%, shrink convergence @2s dx=0.80/dy=0.50 <= 2.5, no .bubble.is-hovered ever (MutationObserver + 3 hovers), detail panel name='Cheerful' + description visible + detail-coord/detail-source absent. FAILED: shrink min gap -0.38px, shrink smoothness 5.84px/100ms at t=300ms.",
+  "rca_of_the_issue": "The .bubble-scale CSS transition (420ms cubic-bezier) does not begin when the is-selected class toggles - per-frame instrumentation shows computed scale still exactly 1.000 at t=364ms on grow and exactly 1.500 at t=394ms on shrink, then jumping to the end value by t~530-715ms. The rAF loop in animateNodeRadius blocks the main thread (4 sim ticks over 169 nodes + 169 style writes per frame at ~7fps), delaying the style recalculation that starts the transition by ~400-500ms. The JS collision-radius ramp, in contrast, completes in exactly 420ms. On GROW this desync is harmless for the gap metric (physics leads, gap only ever grows) but visually wrong. On SHRINK it is harmful: the collision radius returns to 27 while the bubble is still rendered at 1.5x, so neighbours close in on a full-size bubble and the edge gap goes negative (-0.38px). Fix = drive the scale transform from the same rAF frame as the radius rather than from CSS."
+}

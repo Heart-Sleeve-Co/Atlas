@@ -880,3 +880,106 @@ body[data-theme="cosmic"] .bubble-aura {
   font-size: 0.74rem;
   z-index: 10;
 }
+
+/* ============ ADMIN GATE ============ */
+.admin-gate {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+}
+.admin-gate-card {
+  width: min(360px, 100%);
+  padding: 32px 28px 24px;
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 12px;
+  border-radius: 22px;
+  text-align: center;
+}
+.admin-gate-icon {
+  align-self: center;
+  width: 44px;
+  height: 44px;
+  border-radius: 999px;
+  background: var(--surface-border);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--fg);
+  margin-bottom: 6px;
+}
+.admin-gate-card h1 {
+  font-family: var(--font-heading);
+  font-weight: 600;
+  font-size: 1.2rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  margin: 0;
+  color: var(--fg);
+}
+.admin-gate-card p {
+  margin: 0 0 8px 0;
+  color: var(--fg-muted);
+  font-size: 0.82rem;
+  line-height: 1.5;
+}
+.admin-gate-input {
+  width: 100%;
+  padding: 10px 14px;
+  border-radius: 10px;
+  border: 1px solid var(--surface-border);
+  background: transparent;
+  color: var(--fg);
+  font-family: var(--font-body);
+  font-size: 0.95rem;
+  outline: none;
+  transition:
+    border-color 180ms ease,
+    background-color 180ms ease;
+}
+.admin-gate-input:focus {
+  border-color: var(--fg);
+  background: var(--surface);
+}
+.admin-gate-error {
+  margin: 0;
+  color: hsl(0, 70%, 60%);
+  font-size: 0.78rem;
+}
+.admin-gate-submit {
+  padding: 10px 14px;
+  border-radius: 999px;
+  border: none;
+  background: var(--fg);
+  color: var(--bg-base);
+  font-family: var(--font-body);
+  font-weight: 500;
+  font-size: 0.88rem;
+  cursor: pointer;
+  transition: opacity 180ms ease;
+}
+.admin-gate-submit:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+.admin-gate-back {
+  margin-top: 4px;
+  color: var(--fg-muted);
+  font-size: 0.76rem;
+  text-decoration: none;
+}
+.admin-gate-back:hover {
+  color: var(--fg);
+}
+.admin-header-actions {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+button.admin-view-link {
+  cursor: pointer;
+  font-family: var(--font-body);
+}

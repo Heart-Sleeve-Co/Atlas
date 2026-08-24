@@ -1,4 +1,4 @@
-from fastapi import FastAPI, APIRouter, HTTPException
+from fastapi import FastAPI, APIRouter, HTTPException, Header, Depends
 from fastapi.responses import JSONResponse
 from dotenv import load_dotenv
 from starlette.middleware.cors import CORSMiddleware
@@ -7,6 +7,7 @@ import os
 import json
 import logging
 import uuid
+import hmac
 from pathlib import Path
 from pydantic import BaseModel, Field, ConfigDict
 from typing import Optional
@@ -37,6 +38,7 @@ client = AsyncIOMotorClient(mongo_url)
 db = client[os.environ['DB_NAME']]
 
 EMERGENT_LLM_KEY = os.environ.get('EMERGENT_LLM_KEY')
+ADMIN_PASSPHRASE = os.environ.get('ADMIN_PASSPHRASE')
 
 # Grid bounds - 13x13 = 169 emotions
 X_MIN, X_MAX = -6, 6
@@ -216,8 +218,39 @@ async def generate_emotion(req: GenerateRequest):
 
 
 # ============ ADMIN ENDPOINTS ============
-# Simple CRUD for manually editing the emotion titles / descriptions.
-# No auth — this is intended for local editing only.
+# CRUD for manually editing emotion titles / descriptions.
+# Protected by a passphrase set in backend/.env (ADMIN_PASSPHRASE).
+
+def require_admin(x_admin_passphrase: Optional[str] = Header(default=None)):
+    """FastAPI dependency: constant-time compare X-Admin-Passphrase header."""
+    if not ADMIN_PASSPHRASE:
+        raise HTTPException(
+            status_code=500,
+            detail="ADMIN_PASSPHRASE is not configured on the server.",
+        )
+    if not x_admin_passphrase or not hmac.compare_digest(
+        x_admin_passphrase, ADMIN_PASSPHRASE
+    ):
+        raise HTTPException(status_code=401, detail="Invalid passphrase")
+    return True
+
+
+class AdminVerifyRequest(BaseModel):
+    passphrase: str
+
+
+@api_router.post("/admin/verify")
+async def admin_verify(req: AdminVerifyRequest):
+    """Check a passphrase without touching data. Used by the login screen."""
+    if not ADMIN_PASSPHRASE:
+        raise HTTPException(
+            status_code=500,
+            detail="ADMIN_PASSPHRASE is not configured on the server.",
+        )
+    if not hmac.compare_digest(req.passphrase, ADMIN_PASSPHRASE):
+        raise HTTPException(status_code=401, detail="Invalid passphrase")
+    return {"ok": True}
+
 
 class AdminUpdateRequest(BaseModel):
     name: str
@@ -229,7 +262,7 @@ class AdminBulkUpdateRequest(BaseModel):
 
 
 @api_router.get("/admin/emotions")
-async def admin_get_all():
+async def admin_get_all(_: bool = Depends(require_admin)):
     """Return every coordinate in the grid with its current name + description."""
     data = load_emotions()
     entries = []
@@ -250,7 +283,7 @@ async def admin_get_all():
 
 
 @api_router.put("/admin/emotions/{x}/{y}")
-async def admin_update_one(x: int, y: int, req: AdminUpdateRequest):
+async def admin_update_one(x: int, y: int, req: AdminUpdateRequest, _: bool = Depends(require_admin)):
     """Update a single coordinate's name + description."""
     if not (X_MIN <= x <= X_MAX and Y_MIN <= y <= Y_MAX):
         raise HTTPException(status_code=400, detail="Coordinate out of grid bounds")
@@ -262,7 +295,7 @@ async def admin_update_one(x: int, y: int, req: AdminUpdateRequest):
 
 
 @api_router.put("/admin/emotions")
-async def admin_bulk_update(req: AdminBulkUpdateRequest):
+async def admin_bulk_update(req: AdminBulkUpdateRequest, _: bool = Depends(require_admin)):
     """Bulk-update multiple coordinates in one write."""
     data = load_emotions()
     written = 0

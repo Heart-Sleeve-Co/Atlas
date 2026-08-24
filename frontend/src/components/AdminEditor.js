@@ -1,6 +1,6 @@
 import { useEffect, useState, useCallback, useRef } from "react";
 import axios from "axios";
-import { Save, Check, Loader2, ExternalLink } from "lucide-react";
+import { Save, Check, Loader2, ExternalLink, LogOut } from "lucide-react";
 
 const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
 const API = `${BACKEND_URL}/api`;
@@ -9,7 +9,7 @@ function coordKey(x, y) {
   return `${x},${y}`;
 }
 
-export default function AdminEditor() {
+export default function AdminEditor({ passphrase, onLogout }) {
   const [entries, setEntries] = useState([]); // sorted top-to-bottom, left-to-right
   const [grid, setGrid] = useState({
     x_min: -6,
@@ -21,19 +21,25 @@ export default function AdminEditor() {
   const [loading, setLoading] = useState(true);
   const [activeColumn, setActiveColumn] = useState(0); // which x column is visible
   const timers = useRef({}); // debounce timers per key
+  const authHeaders = { headers: { "X-Admin-Passphrase": passphrase } };
 
   useEffect(() => {
     axios
-      .get(`${API}/admin/emotions`)
+      .get(`${API}/admin/emotions`, authHeaders)
       .then((res) => {
         setEntries(res.data.entries);
         setGrid(res.data.grid);
       })
       .catch((err) => {
         console.error(err);
-        alert("Failed to load emotions. Is the backend running?");
+        if (err.response?.status === 401) {
+          onLogout?.();
+        } else {
+          alert("Failed to load emotions. Is the backend running?");
+        }
       })
       .finally(() => setLoading(false));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   // Group entries by x-column, sorted by y descending (top-to-bottom)
@@ -49,10 +55,9 @@ export default function AdminEditor() {
     const key = coordKey(x, y);
     setStatus((s) => ({ ...s, [key]: "saving" }));
     axios
-      .put(`${API}/admin/emotions/${x}/${y}`, { name, description })
+      .put(`${API}/admin/emotions/${x}/${y}`, { name, description }, authHeaders)
       .then(() => {
         setStatus((s) => ({ ...s, [key]: "saved" }));
-        // Fade the "saved" indicator after a moment
         setTimeout(() => {
           setStatus((s) => {
             if (s[key] !== "saved") return s;
@@ -62,9 +67,14 @@ export default function AdminEditor() {
           });
         }, 1400);
       })
-      .catch(() => {
+      .catch((err) => {
+        if (err.response?.status === 401) {
+          onLogout?.();
+          return;
+        }
         setStatus((s) => ({ ...s, [key]: "error" }));
       });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const handleChange = useCallback(
@@ -112,14 +122,25 @@ export default function AdminEditor() {
             placeholders remaining
           </p>
         </div>
-        <a
-          className="admin-view-link"
-          href="/"
-          data-testid="admin-view-link"
-        >
-          <ExternalLink size={13} strokeWidth={1.7} />
-          Open the atlas
-        </a>
+        <div className="admin-header-actions">
+          <a
+            className="admin-view-link"
+            href="/"
+            data-testid="admin-view-link"
+          >
+            <ExternalLink size={13} strokeWidth={1.7} />
+            Open the atlas
+          </a>
+          <button
+            type="button"
+            className="admin-view-link"
+            onClick={onLogout}
+            data-testid="admin-logout"
+          >
+            <LogOut size={13} strokeWidth={1.7} />
+            Log out
+          </button>
+        </div>
       </header>
 
       <nav className="admin-column-nav" data-testid="admin-column-nav">

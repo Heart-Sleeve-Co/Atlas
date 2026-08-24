@@ -94,6 +94,7 @@ export default function EmotionGrid({ selected, setSelected, loadingSelected, se
             name: e.name,
             description: e.description,
             source: e.source,
+            color: e.color || null,
           });
         }
         setEmotionMap(m);
@@ -428,6 +429,12 @@ export default function EmotionGrid({ selected, setSelected, loadingSelected, se
         const isSelected =
           selected && selected.x === n.gx && selected.y === n.gy;
         const cached = emotionMap.get(n.key);
+        // Custom color override from admin, if any — falls back to computed.
+        const customColor = cached?.color;
+        const bubbleColor = customColor || n.colors.color;
+        const bubbleGlow = customColor
+          ? `${customColor}8c` // ~55% alpha
+          : n.colors.glow;
         return (
           <div
             key={n.key}
@@ -440,8 +447,8 @@ export default function EmotionGrid({ selected, setSelected, loadingSelected, se
               width: BASE_RADIUS * 2,
               height: BASE_RADIUS * 2,
               transformOrigin: "center center",
-              "--bubble-color": n.colors.color,
-              "--bubble-glow": n.colors.glow,
+              "--bubble-color": bubbleColor,
+              "--bubble-glow": bubbleGlow,
               "--aura-duration": `${n.auraDur}s`,
             }}
             onClick={() => handleClick(n.gx, n.gy)}

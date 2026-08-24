@@ -114,6 +114,7 @@ async def get_all_emotions():
             "name": data["name"],
             "description": data["description"],
             "source": "curated",
+            "color": data.get("color") or None,
         })
     # cached generated — only include coords that pass validity AND aren't already covered
     cached = await db.generated_emotions.find({}, {"_id": 0}).to_list(2000)
@@ -259,15 +260,16 @@ async def admin_verify(req: AdminVerifyRequest):
 class AdminUpdateRequest(BaseModel):
     name: str
     description: str
+    color: Optional[str] = None  # hex like "#RRGGBB", or None to fall back to computed
 
 
 class AdminBulkUpdateRequest(BaseModel):
-    updates: dict  # {"x,y": {"name": str, "description": str}}
+    updates: dict  # {"x,y": {"name": str, "description": str, "color"?: str}}
 
 
 @api_router.get("/admin/emotions")
 async def admin_get_all(_: bool = Depends(require_admin)):
-    """Return every valid (non-axis) coordinate in the grid with its current name + description."""
+    """Return every valid (non-axis) coordinate in the grid with its current name, description, and optional color override."""
     data = load_emotions()
     entries = []
     for y in range(Y_MAX, Y_MIN - 1, -1):
@@ -283,6 +285,7 @@ async def admin_get_all(_: bool = Depends(require_admin)):
                 "y": y,
                 "name": d.get("name", ""),
                 "description": d.get("description", ""),
+                "color": d.get("color") or None,
             })
     return {
         "entries": entries,
@@ -290,16 +293,34 @@ async def admin_get_all(_: bool = Depends(require_admin)):
     }
 
 
+def _clean_color(raw):
+    """Validate a color string. Returns cleaned hex like '#a1b2c3', or None."""
+    if not raw:
+        return None
+    v = str(raw).strip().lower()
+    if not v:
+        return None
+    if not v.startswith("#"):
+        v = "#" + v
+    if len(v) == 7 and all(c in "0123456789abcdef" for c in v[1:]):
+        return v
+    return None
+
+
 @api_router.put("/admin/emotions/{x}/{y}")
 async def admin_update_one(x: int, y: int, req: AdminUpdateRequest, _: bool = Depends(require_admin)):
-    """Update a single coordinate's name + description."""
+    """Update a single coordinate's name + description (+ optional color)."""
     if not is_valid_coord(x, y):
         raise HTTPException(status_code=400, detail="Coordinate out of grid bounds")
     data = load_emotions()
     key = coord_key(x, y)
-    data[key] = {"name": req.name.strip(), "description": req.description.strip()}
+    entry = {"name": req.name.strip(), "description": req.description.strip()}
+    color = _clean_color(req.color)
+    if color:
+        entry["color"] = color
+    data[key] = entry
     save_emotions(data)
-    return {"x": x, "y": y, **data[key]}
+    return {"x": x, "y": y, **entry}
 
 
 @api_router.put("/admin/emotions")
@@ -315,9 +336,14 @@ async def admin_bulk_update(req: AdminBulkUpdateRequest, _: bool = Depends(requi
             continue
         if not is_valid_coord(x, y):
             continue
-        name = str(val.get("name", "")).strip()
-        description = str(val.get("description", "")).strip()
-        data[key] = {"name": name, "description": description}
+        entry = {
+            "name": str(val.get("name", "")).strip(),
+            "description": str(val.get("description", "")).strip(),
+        }
+        color = _clean_color(val.get("color"))
+        if color:
+            entry["color"] = color
+        data[key] = entry
         written += 1
     save_emotions(data)
     return {"written": written}

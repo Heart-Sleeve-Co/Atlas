@@ -53,11 +53,15 @@ export default function AdminEditor({ passphrase, onLogout }) {
     columns.push({ x, entries: col });
   }
 
-  const saveEntry = useCallback((x, y, name, description) => {
+  const saveEntry = useCallback((x, y, name, description, color) => {
     const key = coordKey(x, y);
     setStatus((s) => ({ ...s, [key]: "saving" }));
     axios
-      .put(`${API}/admin/emotions/${x}/${y}`, { name, description }, authHeaders)
+      .put(
+        `${API}/admin/emotions/${x}/${y}`,
+        { name, description, color: color || null },
+        authHeaders,
+      )
       .then(() => {
         setStatus((s) => ({ ...s, [key]: "saved" }));
         setTimeout(() => {
@@ -83,7 +87,9 @@ export default function AdminEditor({ passphrase, onLogout }) {
     (x, y, field, value) => {
       const key = coordKey(x, y);
       setEntries((es) =>
-        es.map((e) => (e.x === x && e.y === y ? { ...e, [field]: value } : e)),
+        es.map((e) =>
+          e.x === x && e.y === y ? { ...e, [field]: value } : e,
+        ),
       );
       // Debounce save per cell
       if (timers.current[key]) clearTimeout(timers.current[key]);
@@ -92,9 +98,10 @@ export default function AdminEditor({ passphrase, onLogout }) {
           entries.find((e) => e.x === x && e.y === y) || {
             name: "",
             description: "",
+            color: null,
           };
         const merged = { ...current, [field]: value };
-        saveEntry(x, y, merged.name, merged.description);
+        saveEntry(x, y, merged.name, merged.description, merged.color);
       }, 700);
     },
     [entries, saveEntry],
@@ -251,6 +258,43 @@ export default function AdminEditor({ passphrase, onLogout }) {
                       }
                       data-testid={`admin-desc-${e.x}-${e.y}`}
                     />
+                    <div className="admin-color-row">
+                      <label
+                        className="admin-color-swatch"
+                        htmlFor={`color-${e.x}-${e.y}`}
+                        style={{
+                          background: e.color || "transparent",
+                          borderStyle: e.color ? "solid" : "dashed",
+                        }}
+                        title={e.color ? "Change color" : "Set custom color"}
+                      >
+                        <input
+                          id={`color-${e.x}-${e.y}`}
+                          type="color"
+                          value={e.color || "#888888"}
+                          onChange={(ev) =>
+                            handleChange(e.x, e.y, "color", ev.target.value)
+                          }
+                          data-testid={`admin-color-${e.x}-${e.y}`}
+                        />
+                      </label>
+                      <span className="admin-color-hex">
+                        {e.color || "auto (computed)"}
+                      </span>
+                      {e.color && (
+                        <button
+                          type="button"
+                          className="admin-color-clear"
+                          onClick={() =>
+                            handleChange(e.x, e.y, "color", "")
+                          }
+                          data-testid={`admin-color-clear-${e.x}-${e.y}`}
+                          title="Reset to computed color"
+                        >
+                          ×
+                        </button>
+                      )}
+                    </div>
                   </div>
                 );
               })}

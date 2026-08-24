@@ -1,72 +1,86 @@
 /**
- * Map an emotion's (x, y) grid coordinate to bubble colors, using a
- * hand-designed hue palette per quadrant:
+ * Bubble color per (x, y). Each quadrant has its own hand-tuned hue/sat/light
+ * map, and neighbouring quadrants are designed so that hues meet cleanly
+ * across the axes:
  *
- *  Q1 (x+, y+)  High-energy pleasant
- *     y=+7 → golden yellow / yellow-orange (~40°)
- *     y=+1 → pale yellow-green (~85°)
- *     No blue.
+ *   Q1 top-right  (pleasant, high energy)   golden yellow → pale yellow
+ *   Q2 top-left   (unpleasant, high energy) red-orange near y-axis, cool red / burgundy at far left; red-violet at bottom
+ *   Q3 bottom-left (unpleasant, low energy) blue-violet near y-axis top → deep blue (#305DD9) corner; lighter cyan-blue (#3095D9) near y-axis at the bottom
+ *   Q4 bottom-right (pleasant, low energy)  yellow-green near y-axis → teal / mint (#00D6A3) corner
  *
- *  Q2 (x-, y+)  High-energy unpleasant
- *     y=+7 → red / red-orange (~10°)
- *     y=+1 → red-violet (~335°)
- *     No green.
- *
- *  Q3 (x-, y-)  Low-energy unpleasant
- *     y=-7 → darker indigo (~245°), heavy/sad
- *     y=-1 → blue-violet (~270°), lighter
- *     Less green, less refreshing.
- *
- *  Q4 (x+, y-)  Low-energy pleasant
- *     y=-7 → teal / mint (~165°), reference #00D6A3
- *     y=-1 → yellow-green (~90°)
- *     No red.
- *
- * x-axis (distance from y=0) drives saturation & richness: bubbles closer
- * to the y-axis are paler; bubbles further out are more saturated.
+ * The transitions read as: yellow → golden (Q1) → red-orange → cool red (Q2)
+ * → red-violet → blue-violet → deep blue (Q3) → cyan-blue → teal (Q4) →
+ * yellow-green → yellow.
  */
 
 function lerp(a, b, t) {
   return a + (b - a) * t;
 }
 
+// Bilinear interpolation using four corner values on a unit square.
+// bl = bottom-left (nx=0, ny=0), br = (nx=1, ny=0), tl = (nx=0, ny=1), tr = (nx=1, ny=1)
+function bilerp(bl, br, tl, tr, nx, ny) {
+  const bot = lerp(bl, br, nx);
+  const top = lerp(tl, tr, nx);
+  return lerp(bot, top, ny);
+}
+
 export function emotionColor(x, y) {
   // Coords are always non-zero (skipped on the grid).
   const dx = Math.abs(x); // 1..7
   const dy = Math.abs(y); // 1..7
-  const nx = (dx - 1) / 6; // 0 at |x|=1 (near y-axis), 1 at |x|=7 (far)
-  const ny = (dy - 1) / 6; // 0 at |y|=1 (near x-axis), 1 at |y|=7 (far)
+  const nx = (dx - 1) / 6; // 0 near y-axis, 1 far
+  const ny = (dy - 1) / 6; // 0 near x-axis, 1 far
 
   let hue, sat, light;
 
   if (x > 0 && y > 0) {
-    // Q1: golden-yellow (top) → pale yellow-green (near y=0)
-    hue = lerp(85, 40, ny); // 85 near y=0, 40 at y=+7
-    sat = lerp(50, 85, ny * 0.55 + nx * 0.45);
-    light = lerp(72, 58, ny * 0.6 + nx * 0.4);
+    // Q1: more yellow / golden overall; less yellow-green than Q4.
+    //   corner (nx=1, ny=1): golden yellow ~40°
+    //   top near y-axis: warm yellow ~50°
+    //   bottom near y-axis: pale yellow ~70°
+    //   bottom far from y-axis: yellow ~55°
+    hue = bilerp(70, 55, 50, 40, nx, ny);
+    sat = bilerp(52, 78, 62, 90, nx, ny);
+    light = bilerp(72, 62, 65, 58, nx, ny);
   } else if (x < 0 && y > 0) {
-    // Q2: red-violet (near y=0) → red / red-orange (top). Short-arc interp:
-    // 335° → 10° going forward through 360/0.
-    const hMin = 335;
-    const hMax = 10 + 360; // 370 unwrapped, then mod
-    hue = (lerp(hMin, hMax, ny)) % 360;
-    sat = lerp(55, 82, ny * 0.55 + nx * 0.45);
-    light = lerp(68, 54, ny * 0.55 + nx * 0.45);
+    // Q2: red at top, red-orange near y-axis, cool red / burgundy at far
+    // left, red-violet at bottom for a smooth blend into Q3.
+    //   top near y-axis (right side of Q2): red-orange 15°
+    //   top far left: cool red 355° (via short arc through 0)
+    //   bottom near y-axis: red-violet 340°
+    //   bottom far left: burgundy 330°
+    // Use unwrapped extended range so lerp is monotonic through 0/360.
+    const tl = -5; // 355°  (unwrapped)
+    const tr = 15; // 15°
+    const bl = -30; // 330°
+    const br = -20; // 340°
+    hue = (bilerp(bl, br, tl, tr, nx, ny) + 360) % 360;
+    sat = bilerp(50, 72, 65, 85, nx, ny);
+    light = bilerp(66, 58, 60, 55, nx, ny);
   } else if (x < 0 && y < 0) {
-    // Q3: blue-violet (near y=0) → deep blue (bottom, ~#305DD9). Heavier but
-    // not muddy — keep enough lightness for contrast on the dark theme.
-    hue = lerp(250, 224, ny); // 250 near y=0, 224 at y=-7 (matches #305DD9)
-    sat = lerp(55, 72, ny * 0.5 + nx * 0.5);
-    // Bottom stays in the mid range so bubbles remain visible on dark bg.
-    light = lerp(68, 52, ny * 0.6 + nx * 0.4);
+    // Q3: blue-violet near y-axis top → deep blue (#305DD9 ≈ h224) corner;
+    // lighter cyan-blue (#3095D9 ≈ h200) at the bottom near the y-axis.
+    //   top near y-axis (top-right of Q3): blue-violet 260°
+    //   top far left: blue-violet 250°
+    //   bottom near y-axis: cyan-blue 200°
+    //   bottom far left: deep blue 224°
+    hue = bilerp(200, 224, 260, 250, nx, ny);
+    sat = bilerp(60, 72, 55, 70, nx, ny);
+    light = bilerp(62, 52, 68, 55, nx, ny);
   } else {
-    // Q4: yellow-green (near y=0) → teal / mint (bottom, #00D6A3 = ~165°).
-    hue = lerp(90, 165, ny); // 90 near y=0, 165 at y=-7
-    sat = lerp(45, 78, ny * 0.55 + nx * 0.45);
-    light = lerp(70, 55, ny * 0.5 + nx * 0.5);
+    // Q4: yellow-green near y-axis → teal / mint (#00D6A3 ≈ h165) corner.
+    //   top near y-axis (top-left of Q4, close to origin): yellow-green 95°
+    //   top far right: yellow-green 105°
+    //   bottom near y-axis: cyan-green 155°
+    //   bottom far right: mint 165°
+    hue = bilerp(155, 165, 95, 105, nx, ny);
+    sat = bilerp(60, 78, 45, 62, nx, ny);
+    light = bilerp(64, 58, 70, 62, nx, ny);
   }
 
-  const color = `hsl(${hue}, ${sat}%, ${light}%)`;
-  const glow = `hsla(${hue}, ${sat}%, ${light}%, 0.55)`;
-  return { color, glow };
+  return {
+    color: `hsl(${hue}, ${sat}%, ${light}%)`,
+    glow: `hsla(${hue}, ${sat}%, ${light}%, 0.55)`,
+  };
 }

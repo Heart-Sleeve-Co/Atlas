@@ -42,9 +42,11 @@ export default function AdminEditor({ passphrase, onLogout }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // Group entries by x-column, sorted by y descending (top-to-bottom)
+  // Group entries by x-column, sorted by y descending (top-to-bottom).
+  // Skip x=0 — no valid coords along the axis.
   const columns = [];
   for (let x = grid.x_min; x <= grid.x_max; x++) {
+    if (x === 0) continue;
     const col = entries
       .filter((e) => e.x === x)
       .sort((a, b) => b.y - a.y); // +y at top

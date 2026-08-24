@@ -11,13 +11,13 @@ import { emotionColor } from "@/components/emotionColors";
 const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
 const API = `${BACKEND_URL}/api`;
 
-// Grid config (matches backend) - 13x13 = 169 emotions
-const X_MIN = -6,
-  X_MAX = 6;
-const Y_MIN = -6,
-  Y_MAX = 6;
-const GRID_COLS = X_MAX - X_MIN + 1; // 13
-const GRID_ROWS = Y_MAX - Y_MIN + 1; // 13
+// Grid config (matches backend) - 14x14 = 196 emotions (no coords on x=0 or y=0)
+const X_MIN = -7,
+  X_MAX = 7;
+const Y_MIN = -7,
+  Y_MAX = 7;
+const GRID_COLS = X_MAX - X_MIN; // 14 (skips 0)
+const GRID_ROWS = Y_MAX - Y_MIN; // 14 (skips 0)
 
 // Layout constants — reserve space around the grid for axis labels
 const PADDING_TOP = 140; // room for header + top axis label
@@ -62,11 +62,13 @@ export default function EmotionGrid({ selected, setSelected, loadingSelected, se
   const simulationRef = useRef(null);
   const [emotionMap, setEmotionMap] = useState(new Map());
 
-  // Precompute 169 nodes
+  // Precompute 196 nodes (skip anything on x=0 or y=0)
   const initialNodes = useMemo(() => {
     const arr = [];
     for (let x = X_MIN; x <= X_MAX; x++) {
+      if (x === 0) continue;
       for (let y = Y_MIN; y <= Y_MAX; y++) {
+        if (y === 0) continue;
         arr.push({
           gx: x,
           gy: y,
@@ -109,8 +111,8 @@ export default function EmotionGrid({ selected, setSelected, loadingSelected, se
   const gridDims = useMemo(() => {
     const stepX = MIN_STEP;
     const stepY = MIN_STEP;
-    const totalW = PADDING_LEFT + PADDING_RIGHT + stepX * (GRID_COLS - 1);
-    const totalH = PADDING_TOP + PADDING_BOTTOM + stepY * (GRID_ROWS - 1);
+    const totalW = PADDING_LEFT + PADDING_RIGHT + stepX * GRID_COLS;
+    const totalH = PADDING_TOP + PADDING_BOTTOM + stepY * GRID_ROWS;
     return { stepX, stepY, totalW, totalH };
   }, []);
 

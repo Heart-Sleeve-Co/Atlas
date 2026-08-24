@@ -40,9 +40,13 @@ db = client[os.environ['DB_NAME']]
 EMERGENT_LLM_KEY = os.environ.get('EMERGENT_LLM_KEY')
 ADMIN_PASSPHRASE = os.environ.get('ADMIN_PASSPHRASE')
 
-# Grid bounds - 13x13 = 169 emotions
-X_MIN, X_MAX = -6, 6
-Y_MIN, Y_MAX = -6, 6
+# Grid bounds - 14x14 = 196 emotions (49 per quadrant); no coords with x=0 or y=0
+X_MIN, X_MAX = -7, 7
+Y_MIN, Y_MAX = -7, 7
+
+
+def is_valid_coord(x: int, y: int) -> bool:
+    return X_MIN <= x <= X_MAX and Y_MIN <= y <= Y_MAX and x != 0 and y != 0
 
 app = FastAPI(title="Emotions Chart API")
 api_router = APIRouter(prefix="/api")
@@ -69,17 +73,15 @@ def coord_key(x: int, y: int) -> str:
 def describe_axes(x: int, y: int) -> str:
     """Describe the quadrant qualities of a coordinate in natural language."""
     def band(v: int, low_label: str, high_label: str) -> str:
-        if v >= 5:
+        if v >= 6:
             return f"very {high_label}"
         if v >= 3:
             return f"clearly {high_label}"
         if v >= 1:
             return f"slightly {high_label}"
-        if v == 0:
-            return "neutral"
         if v >= -2:
             return f"slightly {low_label}"
-        if v >= -4:
+        if v >= -5:
             return f"clearly {low_label}"
         return f"very {low_label}"
 
@@ -103,7 +105,7 @@ async def get_all_emotions():
     for key, data in curated.items():
         x_str, y_str = key.split(",")
         x, y = int(x_str), int(y_str)
-        if not (X_MIN <= x <= X_MAX and Y_MIN <= y <= Y_MAX):
+        if not is_valid_coord(x, y):
             continue
         covered.add((x, y))
         emotions.append({
@@ -113,9 +115,11 @@ async def get_all_emotions():
             "description": data["description"],
             "source": "curated",
         })
-    # cached generated — only include coords NOT already covered by curated
+    # cached generated — only include coords that pass validity AND aren't already covered
     cached = await db.generated_emotions.find({}, {"_id": 0}).to_list(2000)
     for c in cached:
+        if not is_valid_coord(c["x"], c["y"]):
+            continue
         if (c["x"], c["y"]) in covered:
             continue
         emotions.append({
@@ -131,13 +135,13 @@ async def get_all_emotions():
 @api_router.post("/emotions/generate")
 async def generate_emotion(req: GenerateRequest):
     x, y = req.x, req.y
-    if not (X_MIN <= x <= X_MAX and Y_MIN <= y <= Y_MAX):
+    if not is_valid_coord(x, y):
         raise HTTPException(status_code=400, detail="Coordinate out of grid bounds")
 
     key = coord_key(x, y)
     # Return curated if exists AND is in current bounds
     curated = load_emotions()
-    if key in curated and X_MIN <= x <= X_MAX and Y_MIN <= y <= Y_MAX:
+    if key in curated:
         d = curated[key]
         return {"x": x, "y": y, "name": d["name"], "description": d["description"], "source": "curated"}
 
@@ -158,11 +162,11 @@ async def generate_emotion(req: GenerateRequest):
     qualities = describe_axes(x, y)
     system_msg = (
         "You are a subtle, poetic emotion cartographer. Given a point on a 2D affect grid "
-        "(x = pleasantness from -6 unpleasant to +6 pleasant; y = energy from -6 low to +6 high), "
+        "(x = pleasantness from -7 unpleasant to +7 pleasant; y = energy from -7 low to +7 high; "
+        "coordinates never include 0), "
         "you name a single specific emotion and describe it in ONE evocative sentence (15-30 words). "
         "Respond ONLY with a JSON object: {\"name\": \"...\", \"description\": \"...\"}. "
-        "No preamble, no code fences, no extra keys. The name should be 1-2 words, common English. "
-        "Do not repeat generic labels like 'neutral' unless the point is exactly at 0,0."
+        "No preamble, no code fences, no extra keys. The name should be 1-2 words, common English."
     )
     session_id = f"emotion-{uuid.uuid4()}"
     chat = LlmChat(
@@ -263,11 +267,15 @@ class AdminBulkUpdateRequest(BaseModel):
 
 @api_router.get("/admin/emotions")
 async def admin_get_all(_: bool = Depends(require_admin)):
-    """Return every coordinate in the grid with its current name + description."""
+    """Return every valid (non-axis) coordinate in the grid with its current name + description."""
     data = load_emotions()
     entries = []
     for y in range(Y_MAX, Y_MIN - 1, -1):
+        if y == 0:
+            continue
         for x in range(X_MIN, X_MAX + 1):
+            if x == 0:
+                continue
             key = coord_key(x, y)
             d = data.get(key, {"name": "", "description": ""})
             entries.append({
@@ -285,7 +293,7 @@ async def admin_get_all(_: bool = Depends(require_admin)):
 @api_router.put("/admin/emotions/{x}/{y}")
 async def admin_update_one(x: int, y: int, req: AdminUpdateRequest, _: bool = Depends(require_admin)):
     """Update a single coordinate's name + description."""
-    if not (X_MIN <= x <= X_MAX and Y_MIN <= y <= Y_MAX):
+    if not is_valid_coord(x, y):
         raise HTTPException(status_code=400, detail="Coordinate out of grid bounds")
     data = load_emotions()
     key = coord_key(x, y)
@@ -305,7 +313,7 @@ async def admin_bulk_update(req: AdminBulkUpdateRequest, _: bool = Depends(requi
             x, y = int(x_str), int(y_str)
         except (ValueError, AttributeError):
             continue
-        if not (X_MIN <= x <= X_MAX and Y_MIN <= y <= Y_MAX):
+        if not is_valid_coord(x, y):
             continue
         name = str(val.get("name", "")).strip()
         description = str(val.get("description", "")).strip()

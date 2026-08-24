@@ -53,12 +53,12 @@ export function emotionColor(x, y) {
     sat = lerp(55, 82, ny * 0.55 + nx * 0.45);
     light = lerp(68, 54, ny * 0.55 + nx * 0.45);
   } else if (x < 0 && y < 0) {
-    // Q3: blue-violet (near y=0) → darker indigo (bottom). Heavy & sad:
-    // saturation stays moderate, lightness DROPS at the bottom.
-    hue = lerp(270, 240, ny); // 270 near y=0, 240 at y=-7
-    sat = lerp(45, 70, ny * 0.6 + nx * 0.4);
-    // Distinctly darker at the bottom to feel "heavy"
-    light = lerp(62, 34, ny * 0.75 + nx * 0.25);
+    // Q3: blue-violet (near y=0) → deep blue (bottom, ~#305DD9). Heavier but
+    // not muddy — keep enough lightness for contrast on the dark theme.
+    hue = lerp(250, 224, ny); // 250 near y=0, 224 at y=-7 (matches #305DD9)
+    sat = lerp(55, 72, ny * 0.5 + nx * 0.5);
+    // Bottom stays in the mid range so bubbles remain visible on dark bg.
+    light = lerp(68, 52, ny * 0.6 + nx * 0.4);
   } else {
     // Q4: yellow-green (near y=0) → teal / mint (bottom, #00D6A3 = ~165°).
     hue = lerp(90, 165, ny); // 90 near y=0, 165 at y=-7

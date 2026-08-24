@@ -13,10 +13,24 @@ from typing import Optional
 from datetime import datetime, timezone
 
 from emergentintegrations.llm.chat import LlmChat, UserMessage
-from emotions_data import CURATED_EMOTIONS
 
 ROOT_DIR = Path(__file__).parent
+EMOTIONS_JSON_PATH = ROOT_DIR / "emotions_data.json"
 load_dotenv(ROOT_DIR / '.env')
+
+
+def load_emotions():
+    """Read emotions from the JSON file every call so admin edits are picked up immediately."""
+    with open(EMOTIONS_JSON_PATH, "r", encoding="utf-8") as f:
+        return json.load(f)
+
+
+def save_emotions(data):
+    """Persist emotions to the JSON file atomically."""
+    tmp = EMOTIONS_JSON_PATH.with_suffix(".json.tmp")
+    with open(tmp, "w", encoding="utf-8") as f:
+        json.dump(data, f, indent=2, ensure_ascii=False)
+    os.replace(tmp, EMOTIONS_JSON_PATH)
 
 mongo_url = os.environ['MONGO_URL']
 client = AsyncIOMotorClient(mongo_url)
@@ -82,8 +96,9 @@ async def get_all_emotions():
     """Return all curated emotions + any cached generated emotions."""
     emotions = []
     covered = set()
+    curated = load_emotions()
     # curated (only keep entries within current grid bounds)
-    for key, data in CURATED_EMOTIONS.items():
+    for key, data in curated.items():
         x_str, y_str = key.split(",")
         x, y = int(x_str), int(y_str)
         if not (X_MIN <= x <= X_MAX and Y_MIN <= y <= Y_MAX):
@@ -119,8 +134,9 @@ async def generate_emotion(req: GenerateRequest):
 
     key = coord_key(x, y)
     # Return curated if exists AND is in current bounds
-    if key in CURATED_EMOTIONS and X_MIN <= x <= X_MAX and Y_MIN <= y <= Y_MAX:
-        d = CURATED_EMOTIONS[key]
+    curated = load_emotions()
+    if key in curated and X_MIN <= x <= X_MAX and Y_MIN <= y <= Y_MAX:
+        d = curated[key]
         return {"x": x, "y": y, "name": d["name"], "description": d["description"], "source": "curated"}
 
     # Return cached if exists
@@ -197,6 +213,73 @@ async def generate_emotion(req: GenerateRequest):
         {"x": x, "y": y}, {"$set": doc}, upsert=True
     )
     return {"x": x, "y": y, "name": name, "description": description, "source": "generated"}
+
+
+# ============ ADMIN ENDPOINTS ============
+# Simple CRUD for manually editing the emotion titles / descriptions.
+# No auth — this is intended for local editing only.
+
+class AdminUpdateRequest(BaseModel):
+    name: str
+    description: str
+
+
+class AdminBulkUpdateRequest(BaseModel):
+    updates: dict  # {"x,y": {"name": str, "description": str}}
+
+
+@api_router.get("/admin/emotions")
+async def admin_get_all():
+    """Return every coordinate in the grid with its current name + description."""
+    data = load_emotions()
+    entries = []
+    for y in range(Y_MAX, Y_MIN - 1, -1):
+        for x in range(X_MIN, X_MAX + 1):
+            key = coord_key(x, y)
+            d = data.get(key, {"name": "", "description": ""})
+            entries.append({
+                "x": x,
+                "y": y,
+                "name": d.get("name", ""),
+                "description": d.get("description", ""),
+            })
+    return {
+        "entries": entries,
+        "grid": {"x_min": X_MIN, "x_max": X_MAX, "y_min": Y_MIN, "y_max": Y_MAX},
+    }
+
+
+@api_router.put("/admin/emotions/{x}/{y}")
+async def admin_update_one(x: int, y: int, req: AdminUpdateRequest):
+    """Update a single coordinate's name + description."""
+    if not (X_MIN <= x <= X_MAX and Y_MIN <= y <= Y_MAX):
+        raise HTTPException(status_code=400, detail="Coordinate out of grid bounds")
+    data = load_emotions()
+    key = coord_key(x, y)
+    data[key] = {"name": req.name.strip(), "description": req.description.strip()}
+    save_emotions(data)
+    return {"x": x, "y": y, **data[key]}
+
+
+@api_router.put("/admin/emotions")
+async def admin_bulk_update(req: AdminBulkUpdateRequest):
+    """Bulk-update multiple coordinates in one write."""
+    data = load_emotions()
+    written = 0
+    for key, val in req.updates.items():
+        try:
+            x_str, y_str = key.split(",")
+            x, y = int(x_str), int(y_str)
+        except (ValueError, AttributeError):
+            continue
+        if not (X_MIN <= x <= X_MAX and Y_MIN <= y <= Y_MAX):
+            continue
+        name = str(val.get("name", "")).strip()
+        description = str(val.get("description", "")).strip()
+        data[key] = {"name": name, "description": description}
+        written += 1
+    save_emotions(data)
+    return {"written": written}
 
 
 app.include_router(api_router)

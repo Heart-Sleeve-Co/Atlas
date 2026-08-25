@@ -39,7 +39,7 @@ const MIN_STEP = 64;
 // Adjacent same-side bubbles are 1 step apart; without compression the gap
 // between (-1) and (+1) would be 2 steps (i.e. AXIS_GAP_STEPS = 2). Lower
 // this to tighten the four quadrants together.
-const AXIS_GAP_STEPS = 1.35;
+const AXIS_GAP_STEPS = 1.1;
 
 // How long the CSS scale transition on .bubble-scale lasts — must match CSS.
 const SHRINK_MS = 420;

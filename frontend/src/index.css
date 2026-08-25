@@ -314,6 +314,10 @@ body[data-theme="ethereal"] .ambient-bg .stars {
   cursor: pointer;
   will-change: transform;
   transform: translate3d(0, 0, 0);
+  /* transition only visual props — never transform (physics writes it every frame). */
+  transition:
+    opacity 320ms ease,
+    filter 320ms ease;
 }
 
 .bubble-scale {
@@ -369,6 +373,42 @@ body[data-theme="cosmic"] .bubble-aura {
 }
 .bubble.is-selected .bubble-aura {
   opacity: 0.85;
+}
+
+/* ============ NEIGHBOUR HIGHLIGHT ============ */
+/* When a bubble is selected, its 8 immediate neighbours softly glow so
+   viewers see nearby feelings. Everything else fades a touch. */
+.bubble .bubble-core,
+.bubble .bubble-aura {
+  transition:
+    box-shadow 320ms ease,
+    opacity 320ms ease,
+    filter 320ms ease;
+}
+.bubble.is-neighbor {
+  z-index: 15;
+}
+.bubble.is-neighbor .bubble-core {
+  box-shadow:
+    0 0 0 2px var(--bubble-glow),
+    0 4px 20px -2px var(--bubble-glow);
+  filter: brightness(1.06);
+}
+.bubble.is-neighbor .bubble-aura {
+  opacity: 0.75;
+  filter: blur(14px);
+}
+body[data-theme="cosmic"] .bubble.is-neighbor .bubble-core {
+  box-shadow:
+    0 0 0 2px var(--bubble-glow),
+    0 0 22px var(--bubble-glow);
+}
+.bubble.is-dimmed {
+  filter: saturate(0.65) brightness(0.82);
+  opacity: 0.55;
+}
+.bubble.is-dimmed .bubble-aura {
+  opacity: 0.18;
 }
 
 @keyframes aura-pulse {

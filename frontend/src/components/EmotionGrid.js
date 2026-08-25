@@ -56,6 +56,34 @@ function coordKey(x, y) {
   return `${x},${y}`;
 }
 
+// Step one grid cell in direction d (-1, 0, +1). If we'd land on the skipped
+// zero axis, jump across to the next valid coord (e.g. from -1 stepping +1
+// goes to +1, not 0).
+function stepAxis(v, d) {
+  if (d === 0) return v;
+  const nv = v + d;
+  if (nv === 0) return v + 2 * d;
+  return nv;
+}
+
+function inBounds(x, y) {
+  return x >= X_MIN && x <= X_MAX && y >= Y_MIN && y <= Y_MAX && x !== 0 && y !== 0;
+}
+
+// The 8 immediate grid neighbours of (x, y), axis-aware.
+function neighborKeysOf(x, y) {
+  const out = new Set();
+  for (let dx = -1; dx <= 1; dx++) {
+    for (let dy = -1; dy <= 1; dy++) {
+      if (dx === 0 && dy === 0) continue;
+      const nx = stepAxis(x, dx);
+      const ny = stepAxis(y, dy);
+      if (inBounds(nx, ny)) out.add(coordKey(nx, ny));
+    }
+  }
+  return out;
+}
+
 export default function EmotionGrid({ selected, setSelected, loadingSelected, setLoadingSelected }) {
   const nodesRef = useRef([]);
   const domRefs = useRef(new Map());
@@ -357,6 +385,12 @@ export default function EmotionGrid({ selected, setSelected, loadingSelected, se
   const gridTop = useMemo(() => targetFor(0, Y_MAX).y, [targetFor]);
   const gridBottom = useMemo(() => targetFor(0, Y_MIN).y, [targetFor]);
 
+  // Immediate-neighbour keys of the current selection (axis-aware).
+  const neighborKeys = useMemo(() => {
+    if (!selected) return null;
+    return neighborKeysOf(selected.x, selected.y);
+  }, [selected]);
+
   return (
     <div
       style={{
@@ -428,6 +462,8 @@ export default function EmotionGrid({ selected, setSelected, loadingSelected, se
       {initialNodes.map((n) => {
         const isSelected =
           selected && selected.x === n.gx && selected.y === n.gy;
+        const isNeighbor = !!neighborKeys && neighborKeys.has(n.key);
+        const isDimmed = !!selected && !isSelected && !isNeighbor;
         const cached = emotionMap.get(n.key);
         // Custom color override from admin, if any — falls back to computed.
         const customColor = cached?.color;
@@ -435,6 +471,9 @@ export default function EmotionGrid({ selected, setSelected, loadingSelected, se
         const bubbleGlow = customColor
           ? `${customColor}8c` // ~55% alpha
           : n.colors.glow;
+        const cls = `bubble${isSelected ? " is-selected" : ""}${
+          isNeighbor ? " is-neighbor" : ""
+        }${isDimmed ? " is-dimmed" : ""}`;
         return (
           <div
             key={n.key}
@@ -442,7 +481,7 @@ export default function EmotionGrid({ selected, setSelected, loadingSelected, se
               if (el) domRefs.current.set(n.key, el);
               else domRefs.current.delete(n.key);
             }}
-            className={`bubble${isSelected ? " is-selected" : ""}`}
+            className={cls}
             style={{
               width: BASE_RADIUS * 2,
               height: BASE_RADIUS * 2,

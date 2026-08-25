@@ -22,8 +22,24 @@ export default function App() {
     localStorage.setItem(THEME_KEY, theme);
   }, [theme]);
 
+  // Click on empty canvas (or outside the grid) clears the selection —
+  // so the highlight / neighbour glow fades back to the resting atlas.
+  const handleAppClick = (e) => {
+    // Ignore clicks that were part of a pan gesture (PanZoom sets .panning).
+    const vp = document.querySelector(".pz-viewport");
+    if (vp && vp.classList.contains("panning")) return;
+    if (
+      e.target.closest(
+        '[data-testid^="emotion-bubble-"], .detail-panel, .app-header, .pz-controls, .legend',
+      )
+    )
+      return;
+    setSelected(null);
+    setLoadingSelected(false);
+  };
+
   return (
-    <div className="app-root" data-testid="app-root">
+    <div className="app-root" data-testid="app-root" onClick={handleAppClick}>
       <div className="ambient-bg" aria-hidden="true">
         <div className="stars" />
       </div>

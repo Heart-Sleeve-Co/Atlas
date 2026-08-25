@@ -404,11 +404,10 @@ body[data-theme="cosmic"] .bubble.is-neighbor .bubble-core {
     0 0 22px var(--bubble-glow);
 }
 .bubble.is-dimmed {
-  filter: saturate(0.65) brightness(0.82);
-  opacity: 0.55;
+  opacity: 0.82;
 }
 .bubble.is-dimmed .bubble-aura {
-  opacity: 0.18;
+  opacity: 0.32;
 }
 
 @keyframes aura-pulse {

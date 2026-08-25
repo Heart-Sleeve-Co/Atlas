@@ -35,14 +35,11 @@ export function emotionColor(x, y) {
   let hue, sat, light;
 
   if (x > 0 && y > 0) {
-    // Q1: more yellow / golden overall; less yellow-green than Q4.
-    //   corner (nx=1, ny=1): golden yellow ~40°
-    //   top near y-axis: warm yellow ~50°
-    //   bottom near y-axis: pale yellow ~70°
-    //   bottom far from y-axis: yellow ~55°
-    hue = bilerp(70, 55, 50, 40, nx, ny);
-    sat = bilerp(52, 78, 62, 90, nx, ny);
-    light = bilerp(72, 62, 65, 58, nx, ny);
+    // Q1 (rotated -90°): darkest gold at (+1,+7), fading to paler yellows
+    // outward. bl = (1,1), br = (7,1), tl = (1,7), tr = (7,7).
+    hue = bilerp(70, 60, 40, 50, nx, ny);
+    sat = bilerp(62, 52, 90, 78, nx, ny);
+    light = bilerp(65, 72, 58, 62, nx, ny);
   } else if (x < 0 && y > 0) {
     // Q2: red at top, red-orange near y-axis, cool red / burgundy at far
     // left, red-violet at bottom for a smooth blend into Q3.

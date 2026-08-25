@@ -372,10 +372,9 @@ body[data-theme="ethereal"] .ambient-bg .stars {
   justify-content: center;
   padding: 0 3px;
   font-family: var(--font-body);
-  font-size: 9px;
   font-weight: 600;
   letter-spacing: 0.01em;
-  line-height: 1.08;
+  line-height: 1;
   text-align: center;
   color: rgba(255, 255, 255, 0.97);
   text-shadow:
@@ -384,15 +383,10 @@ body[data-theme="ethereal"] .ambient-bg .stars {
   opacity: 0;
   pointer-events: none;
   transition: opacity 220ms ease;
+  white-space: nowrap;
   overflow: hidden;
-  overflow-wrap: anywhere;
+  text-overflow: ellipsis;
   z-index: 3;
-}
-.bubble-label > span {
-  display: -webkit-box;
-  -webkit-line-clamp: 2;
-  -webkit-box-orient: vertical;
-  overflow: hidden;
 }
 .pz-viewport.zoom-labels-visible .bubble-label {
   opacity: 1;

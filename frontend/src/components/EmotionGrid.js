@@ -58,6 +58,18 @@ function easeOutCubic(t) {
   return 1 - Math.pow(1 - t, 3);
 }
 
+// Emotion label sizing — single line inside the bubble. Scales down as the
+// name gets longer so up to 12 characters still fit comfortably.
+function labelFontSize(text) {
+  const len = text.length;
+  if (len <= 7) return 10.5;
+  if (len <= 8) return 10;
+  if (len <= 9) return 9.5;
+  if (len <= 10) return 9;
+  if (len <= 11) return 8.5;
+  return 8; // 12+
+}
+
 function coordKey(x, y) {
   return `${x},${y}`;
 }
@@ -521,8 +533,12 @@ export default function EmotionGrid({ selected, setSelected, loadingSelected, se
               <div className="bubble-aura" aria-hidden="true" />
               <div className="bubble-core" aria-hidden="true" />
               {label && (
-                <div className="bubble-label" aria-hidden="true">
-                  <span>{label}</span>
+                <div
+                  className="bubble-label"
+                  aria-hidden="true"
+                  style={{ fontSize: `${labelFontSize(label)}px` }}
+                >
+                  {label}
                 </div>
               )}
             </div>

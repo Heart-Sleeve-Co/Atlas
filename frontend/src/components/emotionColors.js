@@ -68,13 +68,14 @@ export function emotionColor(x, y) {
     // Q4: the near-origin row (-1) inherits the teal / pure-green that used
     // to sit on the -7 row, and the -7 row is DEEP JEWEL TONES — deep teal
     // near the y-axis and deep emerald at the far bottom-right corner.
-    const bl = 155; // (+1,-1)  greenish-blue teal (moved up from -7 row)
-    const br = 120; // (+7,-1)  pure green
+    const bl = 162; // (+1,-1)  deep teal (matches previous +1,-3 — no more too-light)
+    const br = 120; // (+7,-1)  pure green (unchanged, as requested)
     const tl = 175; // (+1,-7)  deep teal jewel tone
     const tr = 145; // (+7,-7)  deep emerald jewel tone
     hue = bilerp(bl, br, tl, tr, nx, ny);
-    sat = bilerp(58, 68, 80, 82, nx, ny);
-    light = bilerp(62, 58, 34, 28, nx, ny);
+    sat = bilerp(65, 68, 78, 80, nx, ny);
+    // Bottom row lifted so it reads jewel-toned, not muddy-dark.
+    light = bilerp(53, 58, 40, 38, nx, ny);
   }
 
   return {

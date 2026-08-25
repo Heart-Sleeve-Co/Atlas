@@ -57,13 +57,13 @@ export function emotionColor(x, y) {
     // live on the -7 row, and the -7 row now reads as DEEP JEWEL TONES —
     // sapphire on the near-y-axis side, amethyst / indigo at the corner.
     const bl = 195; // (-1,-1)  medium cyan-blue (moved up from -7 row)
-    const br = 245; // (-7,-1)  medium blue-violet
-    const tl = 220; // (-1,-7)  deep sapphire jewel tone
-    const tr = 265; // (-7,-7)  deep amethyst / indigo jewel tone
+    const br = 235; // (-7,-1)  medium blue (less violet than before)
+    const tl = 215; // (-1,-7)  deep sapphire jewel tone
+    const tr = 246; // (-7,-7)  deep sapphire-indigo (capped; no more amethyst purple)
     hue = bilerp(bl, br, tl, tr, nx, ny);
-    sat = bilerp(58, 60, 82, 76, nx, ny);
-    // Top row medium; bottom row deep, dark jewel tones.
-    light = bilerp(60, 56, 34, 28, nx, ny);
+    sat = bilerp(58, 62, 80, 75, nx, ny);
+    // Top row medium; bottom row deep jewel tones — floor at ~34% lightness.
+    light = bilerp(60, 56, 36, 34, nx, ny);
   } else {
     // Q4: the near-origin row (-1) inherits the teal / pure-green that used
     // to sit on the -7 row, and the -7 row is DEEP JEWEL TONES — deep teal

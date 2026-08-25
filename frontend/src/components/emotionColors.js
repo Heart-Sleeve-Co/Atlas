@@ -38,13 +38,14 @@ export function emotionColor(x, y) {
     // Q1: +1 column reads as GOLDENROD (warm, yellow-orange gold);
     // +7 column reads as BRIGHT YELLOWS; corner (+7,+7) matches what
     // (+4,+7) used to be — a saturated golden yellow.
-    const bl = 44; // (+1,+1)  goldenrod near origin (nudged up — less orange-red)
-    const br = 55; // (+7,+1)  saturated bright yellow (more punch)
-    const tl = 36; // (+1,+7)  deep goldenrod (orange-gold, less red)
-    const tr = 45; // (+7,+7)  bright golden yellow (was previous +4,+7)
+    const bl = 50; // (+1,+1)  soft muted yellow near origin (less sat, less red)
+    const br = 58; // (+7,+1)  vibrant near-pure yellow
+    const tl = 44; // (+1,+7)  deep golden yellow (less red than before)
+    const tr = 52; // (+7,+7)  vibrant golden yellow corner
     hue = bilerp(bl, br, tl, tr, nx, ny);
-    sat = bilerp(72, 88, 88, 84, nx, ny);
-    light = bilerp(66, 65, 55, 62, nx, ny);
+    // Lower saturation near origin, high saturation everywhere else.
+    sat = bilerp(58, 90, 88, 88, nx, ny);
+    light = bilerp(70, 66, 56, 62, nx, ny);
   } else if (x < 0 && y > 0) {
     // Q2: clean bridge between the yellow (Q1) and blue (Q3) quadrants.
     // Near y-axis (-1 col) reads red / red-orange; far left (-7 col) reads

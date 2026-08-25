@@ -199,9 +199,9 @@ export default function AdminEditor({ passphrase, onLogout }) {
               </span>
               <span className="admin-column-title">
                 {col.x < 0
-                  ? "Uncomfortable"
+                  ? "Painful"
                   : col.x > 0
-                    ? "Comfortable"
+                    ? "Pleasant"
                     : "Neutral"}
               </span>
             </header>

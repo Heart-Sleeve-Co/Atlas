@@ -95,7 +95,7 @@ export default function App() {
           aria-hidden={!legendOpen}
         >
           <p>
-            <strong>Horizontal</strong> — uncomfortable ↔ comfortable.
+            <strong>Horizontal</strong> — painful ↔ pleasant.
             <br />
             <strong>Vertical</strong> — low energy ↔ high energy.
           </p>

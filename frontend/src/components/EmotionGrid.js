@@ -443,14 +443,14 @@ export default function EmotionGrid({ selected, setSelected, loadingSelected, se
             style={{ top: originScreen.y - 10, left: gridRight + 40 }}
             data-testid="axis-label-pleasant"
           >
-            Comfortable →
+            Pleasant →
           </div>
           <div
             className="axis-label axis-label-left"
             style={{ top: originScreen.y - 10, right: gridDims.totalW - gridLeft + 40 }}
             data-testid="axis-label-unpleasant"
           >
-            ← Uncomfortable
+            ← Painful
           </div>
           <div
             className="axis-label axis-label-top"

@@ -53,6 +53,9 @@ export default function EmotionDetailPanel({ emotion, loading, onClose }) {
           </p>
         </div>
       )}
+      <p className="detail-credit" data-testid="detail-credit">
+        made by Heart &amp; Sleeve Co
+      </p>
     </aside>
   );
 }

@@ -593,6 +593,17 @@ body[data-theme="cosmic"] .bubble.is-neighbor .bubble-core {
   gap: 8px;
 }
 
+.detail-credit {
+  margin: 18px 0 0 0;
+  font-family: var(--font-body);
+  font-size: 0.62rem;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  color: var(--fg-muted);
+  opacity: 0.55;
+  text-align: right;
+}
+
 .detail-close {
   position: absolute;
   top: 14px;

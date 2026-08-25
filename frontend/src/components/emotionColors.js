@@ -53,23 +53,28 @@ export function emotionColor(x, y) {
     sat = bilerp(70, 65, 82, 72, nx, ny);
     light = bilerp(62, 60, 58, 55, nx, ny);
   } else if (x < 0 && y < 0) {
-    // Q3: vertically flipped — deepest indigo at (-7,-7) corner, lighter
-    // blue-violets along the top (y=-1) near the x-axis, and the cyan-blue
-    // (#3095D9 ≈ h200) moved to (-1,-7) at the bottom near the y-axis.
-    const bl = 260; // (-1,-1)  blue-violet, light  (was tl before flip)
-    const br = 250; // (-7,-1)  blue-violet, medium
-    const tl = 200; // (-1,-7)  cyan-blue (#3095D9)
-    const tr = 235; // (-7,-7)  deep indigo corner
+    // Q3: the near-origin row (-1) picks up the mid cyan-blue that used to
+    // live on the -7 row, and the -7 row now reads as DEEP JEWEL TONES —
+    // sapphire on the near-y-axis side, amethyst / indigo at the corner.
+    const bl = 195; // (-1,-1)  medium cyan-blue (moved up from -7 row)
+    const br = 245; // (-7,-1)  medium blue-violet
+    const tl = 220; // (-1,-7)  deep sapphire jewel tone
+    const tr = 265; // (-7,-7)  deep amethyst / indigo jewel tone
     hue = bilerp(bl, br, tl, tr, nx, ny);
-    sat = bilerp(55, 65, 65, 78, nx, ny);
-    // Lightness distinctly drops at the corner for the heavy / sad feel.
-    light = bilerp(68, 60, 62, 44, nx, ny);
+    sat = bilerp(58, 60, 82, 76, nx, ny);
+    // Top row medium; bottom row deep, dark jewel tones.
+    light = bilerp(60, 56, 34, 28, nx, ny);
   } else {
-    // Q4: unchanged intent — yellow-greens near the x-axis (top of the
-    // quadrant), teal / mint (#00D6A3 ≈ h165) at the bottom corner.
-    hue = bilerp(95, 105, 155, 165, nx, ny);
-    sat = bilerp(60, 78, 45, 62, nx, ny);
-    light = bilerp(64, 58, 70, 62, nx, ny);
+    // Q4: the near-origin row (-1) inherits the teal / pure-green that used
+    // to sit on the -7 row, and the -7 row is DEEP JEWEL TONES — deep teal
+    // near the y-axis and deep emerald at the far bottom-right corner.
+    const bl = 155; // (+1,-1)  greenish-blue teal (moved up from -7 row)
+    const br = 120; // (+7,-1)  pure green
+    const tl = 175; // (+1,-7)  deep teal jewel tone
+    const tr = 145; // (+7,-7)  deep emerald jewel tone
+    hue = bilerp(bl, br, tl, tr, nx, ny);
+    sat = bilerp(58, 68, 80, 82, nx, ny);
+    light = bilerp(62, 58, 34, 28, nx, ny);
   }
 
   return {

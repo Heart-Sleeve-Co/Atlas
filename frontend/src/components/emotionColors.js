@@ -57,7 +57,8 @@ export function emotionColor(x, y) {
     const tr = -10; // (-7,+7)  deep ruby jewel tone (was previous -4,+7, now deeper)
     hue = (bilerp(bl, br, tl, tr, nx, ny) + 360) % 360;
     sat = bilerp(70, 72, 82, 88, nx, ny);
-    light = bilerp(62, 55, 58, 45, nx, ny);
+    // Lightness floors lifted so multiply-blend labels stay readable.
+    light = bilerp(62, 55, 58, 50, nx, ny);
   } else if (x < 0 && y < 0) {
     // Q3: the near-origin row (-1) picks up the mid cyan-blue that used to
     // live on the -7 row, and the -7 row now reads as DEEP JEWEL TONES —
@@ -67,9 +68,10 @@ export function emotionColor(x, y) {
     const tl = 215; // (-1,-7)  deep sapphire jewel tone
     const tr = 246; // (-7,-7)  deep sapphire-indigo (capped; no more amethyst purple)
     hue = bilerp(bl, br, tl, tr, nx, ny);
-    sat = bilerp(58, 62, 80, 75, nx, ny);
-    // Top row medium; bottom row deep jewel tones — floor at ~34% lightness.
-    light = bilerp(60, 56, 36, 34, nx, ny);
+    sat = bilerp(58, 62, 78, 72, nx, ny);
+    // Bottom-row lightness lifted so multiply-blend labels stay readable
+    // (was 36/34 — too dark; jewel character preserved via high sat).
+    light = bilerp(60, 56, 46, 44, nx, ny);
   } else {
     // Q4: the near-origin row (-1) inherits the teal / pure-green that used
     // to sit on the -7 row, and the -7 row is DEEP JEWEL TONES — deep teal
@@ -80,8 +82,8 @@ export function emotionColor(x, y) {
     const tr = 145; // (+7,-7)  deep emerald jewel tone
     hue = bilerp(bl, br, tl, tr, nx, ny);
     sat = bilerp(65, 68, 78, 80, nx, ny);
-    // Bottom row lifted so it reads jewel-toned, not muddy-dark.
-    light = bilerp(53, 58, 40, 38, nx, ny);
+    // Bottom row lifted so multiply-blend labels stay readable.
+    light = bilerp(53, 58, 46, 44, nx, ny);
   }
 
   return {

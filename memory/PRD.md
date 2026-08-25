@@ -30,6 +30,10 @@ An interactive emotions chart where you can explore the meanings and experiences
 - `/admin` editor with passphrase auth gate (`fH4KGbiw!`) for inline editing of titles, descriptions, and per-cell custom colors
 - Backend: `GET /api/emotions`, `PUT /api/emotions/{x}/{y}` (admin), `POST /api/admin/verify`
 - Nearby Suggestions: selecting a bubble softly glows its 8 immediate neighbours (axis-aware — jumps across the skipped x=0 / y=0 axis so cross-quadrant neighbours light up too) and gently dims the rest of the atlas
+- Click outside the grid clears the current selection and restores the atlas
+- Bubble labels: emotion name shown inside each labelled bubble; visible only when zoomed to ≥ 80% (PanZoom toggles `.zoom-labels-visible`); TODO placeholders remain unlabeled
+- Aged-paper vibe in light mode (soft sepia vignette + slight grain bump); dark-mode starfield untouched
+- Compressed axis gap (`AXIS_GAP_STEPS = 1.35`) so the four quadrants sit closer together as a single continuous field
 
 ## Color Scheme (Feb 2026, iterated with user)
 - Q1 (pleasant / high energy): vibrant yellow field — soft muted yellow near origin, bright saturated yellow far right, deep golden yellow top corner (no red undertones)

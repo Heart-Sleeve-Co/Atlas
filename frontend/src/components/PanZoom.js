@@ -75,6 +75,13 @@ export default function PanZoom({ children, initialFit = true }) {
     };
   }, [initialFit, fitToViewport, applyTransform]);
 
+  // Show bubble labels only when zoomed in enough for the text to be legible.
+  useEffect(() => {
+    const vp = viewportRef.current;
+    if (!vp) return;
+    vp.classList.toggle("zoom-labels-visible", scale >= 0.8);
+  }, [scale]);
+
   const zoomTo = useCallback(
     (newScale, cx, cy) => {
       const vp = viewportRef.current;

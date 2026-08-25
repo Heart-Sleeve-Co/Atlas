@@ -492,6 +492,11 @@ export default function EmotionGrid({ selected, setSelected, loadingSelected, se
         const cls = `bubble${isSelected ? " is-selected" : ""}${
           isNeighbor ? " is-neighbor" : ""
         }${isDimmed ? " is-dimmed" : ""}`;
+        // Only show a label for cells with a real, non-placeholder name.
+        const label =
+          cached && cached.name && !cached.name.startsWith("TODO")
+            ? cached.name
+            : null;
         return (
           <div
             key={n.key}
@@ -515,6 +520,11 @@ export default function EmotionGrid({ selected, setSelected, loadingSelected, se
             <div className="bubble-scale">
               <div className="bubble-aura" aria-hidden="true" />
               <div className="bubble-core" aria-hidden="true" />
+              {label && (
+                <div className="bubble-label" aria-hidden="true">
+                  <span>{label}</span>
+                </div>
+              )}
             </div>
           </div>
         );

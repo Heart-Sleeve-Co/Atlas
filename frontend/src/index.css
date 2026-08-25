@@ -604,6 +604,14 @@ body[data-theme="cosmic"] .bubble.is-neighbor .bubble-core {
   text-align: right;
 }
 
+.brand-credit {
+  margin-top: 4px !important;
+  font-size: 0.62rem !important;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  opacity: 0.5;
+}
+
 .detail-close {
   position: absolute;
   top: 14px;

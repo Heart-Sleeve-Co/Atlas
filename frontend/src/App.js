@@ -48,6 +48,9 @@ export default function App() {
         <div className="brand" data-testid="brand-header">
           <h1>Atlas</h1>
           <p>an emotion map</p>
+          <p className="brand-credit" data-testid="brand-credit">
+            by Heart &amp; Sleeve Co
+          </p>
         </div>
         <ThemeToggle theme={theme} onChange={setTheme} />
       </header>

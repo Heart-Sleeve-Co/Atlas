@@ -45,7 +45,7 @@ export function emotionColor(x, y) {
     hue = bilerp(bl, br, tl, tr, nx, ny);
     // Lower saturation near origin, high saturation everywhere else.
     sat = bilerp(58, 90, 88, 88, nx, ny);
-    light = bilerp(70, 66, 56, 62, nx, ny);
+    light = bilerp(70, 54, 56, 62, nx, ny);
   } else if (x < 0 && y > 0) {
     // Q2: clean bridge between the yellow (Q1) and blue (Q3) quadrants.
     // Near y-axis (-1 col) reads red / red-orange; far left (-7 col) reads

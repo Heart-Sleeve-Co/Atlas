@@ -179,23 +179,10 @@ body[data-theme="cosmic"] .ambient-bg .stars {
 }
 
 body[data-theme="ethereal"] .ambient-bg .stars {
-  /* Aged-paper vibe: sparse tan/sepia flecks (paper fibers) + soft
-     sepia vignette at the edges. Static — no animation cost. */
+  /* Aged-paper vibe: soft sepia vignette at the edges. Static — no cost. */
   position: absolute;
   inset: 0;
   background-image:
-    radial-gradient(1px 1px at 8% 18%, rgba(120, 85, 45, 0.4) 100%, transparent),
-    radial-gradient(1px 1px at 32% 62%, rgba(140, 100, 60, 0.35) 100%, transparent),
-    radial-gradient(1.5px 1.5px at 54% 24%, rgba(120, 85, 40, 0.32) 100%, transparent),
-    radial-gradient(1px 1px at 71% 88%, rgba(150, 105, 55, 0.35) 100%, transparent),
-    radial-gradient(1px 1px at 88% 42%, rgba(130, 90, 50, 0.36) 100%, transparent),
-    radial-gradient(1.5px 1.5px at 18% 78%, rgba(140, 95, 55, 0.32) 100%, transparent),
-    radial-gradient(1px 1px at 44% 8%, rgba(155, 110, 65, 0.34) 100%, transparent),
-    radial-gradient(1px 1px at 62% 51%, rgba(130, 90, 55, 0.28) 100%, transparent),
-    radial-gradient(1px 1px at 3% 44%, rgba(140, 100, 60, 0.32) 100%, transparent),
-    radial-gradient(1px 1px at 26% 34%, rgba(150, 105, 60, 0.28) 100%, transparent),
-    radial-gradient(1px 1px at 79% 68%, rgba(140, 95, 55, 0.30) 100%, transparent),
-    radial-gradient(1px 1px at 48% 82%, rgba(150, 105, 60, 0.28) 100%, transparent),
     radial-gradient(ellipse at center, transparent 58%, rgba(170, 130, 80, 0.16) 100%);
   opacity: 0.9;
   pointer-events: none;

@@ -35,6 +35,12 @@ const SELECTED_PADDING = 10;
 // Minimum spacing between adjacent bubble centers — tight (marble-like).
 const MIN_STEP = 64;
 
+// Fraction of a "step" left as the gap across the skipped x=0 / y=0 axis.
+// Adjacent same-side bubbles are 1 step apart; without compression the gap
+// between (-1) and (+1) would be 2 steps (i.e. AXIS_GAP_STEPS = 2). Lower
+// this to tighten the four quadrants together.
+const AXIS_GAP_STEPS = 1.35;
+
 // How long the CSS scale transition on .bubble-scale lasts — must match CSS.
 const SHRINK_MS = 420;
 
@@ -140,18 +146,30 @@ export default function EmotionGrid({ selected, setSelected, loadingSelected, se
   const gridDims = useMemo(() => {
     const stepX = MIN_STEP;
     const stepY = MIN_STEP;
-    const totalW = PADDING_LEFT + PADDING_RIGHT + stepX * GRID_COLS;
-    const totalH = PADDING_TOP + PADDING_BOTTOM + stepY * GRID_ROWS;
+    // Compressed axis gap saves this many pixels per axis vs the default
+    // 2-step gap; the whole grid shrinks by that amount so it stays centered.
+    const axisSaveX = (2 - AXIS_GAP_STEPS) * stepX;
+    const axisSaveY = (2 - AXIS_GAP_STEPS) * stepY;
+    const totalW = PADDING_LEFT + PADDING_RIGHT + stepX * GRID_COLS - axisSaveX;
+    const totalH = PADDING_TOP + PADDING_BOTTOM + stepY * GRID_ROWS - axisSaveY;
     return { stepX, stepY, totalW, totalH };
   }, []);
 
-  // Compute target positions - equal spacing across grid
+  // Compute target positions - equal spacing across grid, with a smaller
+  // gap where x=0 / y=0 are skipped (so the four quadrants sit closer).
   const targetFor = useCallback(
     (gx, gy) => {
       const { stepX, stepY } = gridDims;
-      const cx = PADDING_LEFT + (gx - X_MIN) * stepX;
+      // How much each half is pulled toward the origin.
+      const shiftX = ((2 - AXIS_GAP_STEPS) / 2) * stepX;
+      const shiftY = ((2 - AXIS_GAP_STEPS) / 2) * stepY;
+      let cx = PADDING_LEFT + (gx - X_MIN) * stepX;
       // Invert y so +y is up on screen
-      const cy = PADDING_TOP + (Y_MAX - gy) * stepY;
+      let cy = PADDING_TOP + (Y_MAX - gy) * stepY;
+      if (gx < 0) cx += shiftX;
+      else if (gx > 0) cx -= shiftX;
+      if (gy > 0) cy += shiftY;
+      else if (gy < 0) cy -= shiftY;
       return { x: cx, y: cy };
     },
     [gridDims],

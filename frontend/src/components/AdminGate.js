@@ -5,11 +5,14 @@ import AdminEditor from "@/components/AdminEditor";
 
 const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
 const API = `${BACKEND_URL}/api`;
+// sessionStorage (not localStorage) so the passphrase is cleared when the
+// tab closes — narrows the XSS-exfiltration window for the shared editor
+// passphrase.
 const STORAGE_KEY = "atlas-admin-passphrase";
 
 export default function AdminGate() {
   const [passphrase, setPassphrase] = useState(
-    () => localStorage.getItem(STORAGE_KEY) || "",
+    () => sessionStorage.getItem(STORAGE_KEY) || "",
   );
   const [authed, setAuthed] = useState(false);
   const [checking, setChecking] = useState(true);
@@ -26,7 +29,7 @@ export default function AdminGate() {
       .post(`${API}/admin/verify`, { passphrase })
       .then(() => setAuthed(true))
       .catch(() => {
-        localStorage.removeItem(STORAGE_KEY);
+        sessionStorage.removeItem(STORAGE_KEY);
         setPassphrase("");
       })
       .finally(() => setChecking(false));
@@ -40,7 +43,7 @@ export default function AdminGate() {
       setChecking(true);
       try {
         await axios.post(`${API}/admin/verify`, { passphrase: input });
-        localStorage.setItem(STORAGE_KEY, input);
+        sessionStorage.setItem(STORAGE_KEY, input);
         setPassphrase(input);
         setAuthed(true);
       } catch (err) {
@@ -57,7 +60,7 @@ export default function AdminGate() {
   );
 
   const handleLogout = useCallback(() => {
-    localStorage.removeItem(STORAGE_KEY);
+    sessionStorage.removeItem(STORAGE_KEY);
     setPassphrase("");
     setAuthed(false);
     setInput("");

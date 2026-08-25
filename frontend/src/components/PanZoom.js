@@ -183,7 +183,10 @@ export default function PanZoom({ children, initialFit = true }) {
             vp.setPointerCapture(g.pointerId);
             g.captured = true;
           } catch (_) {
-            /* ignore */
+            // setPointerCapture throws if the pointer is no longer active
+            // (e.g. it was released between pointerdown and this move).
+            // The gesture just carries on without capture — logging here
+            // would spam the console every quick tap.
           }
         }
         if (g.moved) {
@@ -219,7 +222,8 @@ export default function PanZoom({ children, initialFit = true }) {
         try {
           vp.releasePointerCapture(e.pointerId);
         } catch (_) {
-          /* ignore */
+          // releasePointerCapture throws if the pointer was already
+          // implicitly released by the browser. Safe to ignore.
         }
       }
       if (pointers.size === 0) {

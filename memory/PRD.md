@@ -21,16 +21,20 @@ An interactive emotions chart where you can explore the meanings and experiences
 - **DB**: MongoDB `generated_emotions` collection caches on-demand emotions
 
 ## Implemented (v1, Feb 2026)
-- 256 bubble grid with d3-force collision physics
-- Hover scale 1.5x pushes neighbors via dynamic collision radius
+- 196 bubble grid (4 quadrants, 7x7 each, skipping x=0 and y=0) with d3-force collision physics
+- Click-to-expand marble physics (synchronized d3-force + CSS scaling via useLayoutEffect)
 - Bubble breathe + aura pulse CSS animations (organic drift)
-- Quadrant color mapping (Q1 gold, Q2 magenta, Q3 indigo, Q4 mint) with smooth hue interpolation
 - Ethereal (light pearlescent) and Cosmic (dark starfield) themes with smooth transition
-- ~80 curated emotions covering all quadrants and axes
-- On-demand LLM generation for uncurated coordinates with MongoDB caching
-- Glassmorphic detail panel with source badge (curated vs generated)
-- Axis lines + quadrant labels (High Energy / Low Energy / Pleasant / Unpleasant)
-- Accessibility: prefers-reduced-motion disables animations
+- Custom pan/zoom canvas wrapping the grid
+- Persistent HUD (EmotionDetailPanel) showing selected emotion
+- `/admin` editor with passphrase auth gate (`fH4KGbiw!`) for inline editing of titles, descriptions, and per-cell custom colors
+- Backend: `GET /api/emotions`, `PUT /api/emotions/{x}/{y}` (admin), `POST /api/admin/verify`
+
+## Color Scheme (Feb 2026, iterated with user)
+- Q1 (pleasant / high energy): vibrant yellow field — soft muted yellow near origin, bright saturated yellow far right, deep golden yellow top corner (no red undertones)
+- Q2 (unpleasant / high energy): red-orange near y-axis → pure red top; pink-magenta at (-7,+1) grading up to a deep ruby jewel at (-7,+7)
+- Q3 (unpleasant / low energy): medium cyan-blue near origin row grading to deep sapphire jewel tones on the -7 row, floor capped at hsl(246, 75%, 34%) (no amethyst purple)
+- Q4 (pleasant / low energy): deep teal → pure green on -1 row, deep teal → emerald jewel tones on -7 row
 
 ## Backlog (P1/P2)
 - P1: Expand curated set to all 256 coordinates

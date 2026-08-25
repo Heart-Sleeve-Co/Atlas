@@ -51,13 +51,13 @@ export function emotionColor(x, y) {
     // Near y-axis (-1 col) reads red / red-orange; far left (-7 col) reads
     // magenta / pink-magenta so it flows into Q3's blue-violets.
     // Unwrapped hues so bilerp is monotonic through 0/360.
-    const bl = 15; //  (-1,+1)  red-orange
-    const tl = 5; //   (-1,+7)  pure red
-    const br = -40; // (-7,+1)  magenta (320°)
-    const tr = -25; // (-7,+7)  pink-magenta (335°)
+    const bl = 15; //  (-1,+1)  red-orange (unchanged)
+    const tl = 5; //   (-1,+7)  pure red (unchanged)
+    const br = -25; // (-7,+1)  pink-magenta (moved down from previous -7,+7)
+    const tr = -10; // (-7,+7)  deep ruby jewel tone (was previous -4,+7, now deeper)
     hue = (bilerp(bl, br, tl, tr, nx, ny) + 360) % 360;
-    sat = bilerp(70, 65, 82, 72, nx, ny);
-    light = bilerp(62, 60, 58, 55, nx, ny);
+    sat = bilerp(70, 72, 82, 88, nx, ny);
+    light = bilerp(62, 55, 58, 45, nx, ny);
   } else if (x < 0 && y < 0) {
     // Q3: the near-origin row (-1) picks up the mid cyan-blue that used to
     // live on the -7 row, and the -7 row now reads as DEEP JEWEL TONES —

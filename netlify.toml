@@ -1,9 +1,9 @@
 [build]
-  command = "cd frontend && yarn build"
+  command = "cd frontend && yarn install && yarn build"
   publish = "frontend/build"
 
 [build.environment]
-  NODE_VERSION = "18"
+  NODE_VERSION = "20"
   YARN_VERSION = "1.22.22"
 
 [[redirects]]
